@@ -1,0 +1,38 @@
+[package]
+name = "beerec-variants"
+authors = ["Marco Radocchia <mar.radocchia@proton.me>"]
+description = "Procedural derive macro to generate boilerplate on unit variants enum types"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies.darling]
+version = "0.21.1"
+
+[dependencies.proc-macro2]
+version = "1.0.95"
+
+[dependencies.quote]
+version = "1.0.40"
+
+[dependencies.syn]
+version = "2.0.104"
+
+[dev-dependencies.macrotest]
+version = "1.2.0"
+
+[dev-dependencies.trybuild]
+version = "1.0.110"
+
+[lints.clippy]
+map_unwrap_or = "allow"
+match_bool = "allow"
+match_same_arms = "allow"
+enum_variant_names = "allow"
+module_name_repetitions = "allow"
+
+[lints.clippy.pedantic]
+level = "warn"
+priority = -1
