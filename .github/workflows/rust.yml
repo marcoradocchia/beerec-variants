@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  BINSTALL_DISABLE_TELEMETRY: true
 
 jobs:
   build:
@@ -18,5 +19,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-expand
     - name: Run tests
       run: cargo test --verbose
