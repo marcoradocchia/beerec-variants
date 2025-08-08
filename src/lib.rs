@@ -218,6 +218,9 @@ Enum variants marked as `#[variants(skip)]` are excluded from iteration.");
 /// # fn main() {
 /// assert_eq!(6, Weekday::iter_variants().count());
 ///
+/// assert_eq!(Some("Monday"), Weekday::Monday.as_str());
+/// assert_eq!(Some("Mon"), Weekday::Monday.as_abbr_str());
+///
 /// let mut weekdays = Weekday::iter_variants();
 /// assert_eq!(Some(Weekday::Tuesday), weekdays.next());
 /// assert_eq!(Some(Weekday::Wednesday), weekdays.next());
