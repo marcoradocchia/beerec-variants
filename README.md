@@ -10,7 +10,7 @@
 
 Procedural derive macro to generate boilerplate on unit variants `enum` types.
 
-The [`Variants`] macro generates the following methods:
+The `Variants` macro generates the following methods:
 - `as_str` returning a string representation of the `enum` variant;
 - `as_abbr_str` returning an abbreviated string representation of the `enum` variant;
 - `iter_variants` returning an iterator over owned `enum` variants;
@@ -19,7 +19,7 @@ The [`Variants`] macro generates the following methods:
 
 # Variant attributes
 
-The [`Variants`] macro exposes the following variant attributes:
+The `Variants` macro exposes the following variant attributes:
 - `skip` to exclude the marked variant from iteration;
 - `rename` to assign a custom string representation to the marked variant;
 - `rename_abbr` to assign a custom abbreviated string representation to the marked variant.
@@ -36,8 +36,8 @@ The macro will produce a compile error if:
 - the `rename_abbr` variant attribute is passed any other value type than a string literal.
 
 # Notes 
-Deriving [`Variants`] on type automatically implements [`Clone`] and [`Copy`] for such type.
-This means that deriving [`Clone`] or [`Copy`] on a type that also derives [`Variants`]
+Deriving `Variants` on type automatically implements [`Clone`] and [`Copy`] for such type.
+This means that deriving [`Clone`] or [`Copy`] on a type that also derives `Variants`
 will result in a compilation error for conflicting implementations.
 
 [`Clone`]: https://doc.rust-lang.org/std/clone/trait.Clone.html
