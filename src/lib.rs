@@ -175,6 +175,8 @@ Enum variants marked as `#[variants(skip)]` are excluded from iteration.");
 /// - `iter_variants_as_str` returning an iterator over string representations of the `enum` variants;
 /// - `iter_variants_as_abbr_str` returning an iterator over abbreviated string representations of the `enum` variants.
 ///
+/// It also generates a [`Display`] implementation based on the value returned by the `as_str` method.
+///
 /// # Variant attributes
 ///
 /// The [`Variants`] macro exposes the following variant attributes:
@@ -199,6 +201,7 @@ Enum variants marked as `#[variants(skip)]` are excluded from iteration.");
 /// This means that deriving [`Clone`] or [`Copy`] on a type that also derives [`Variants`]
 /// will result in a compilation error for conflicting implementations.
 ///
+/// [`Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
 /// [`Clone`]: https://doc.rust-lang.org/std/clone/trait.Clone.html
 /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
 ///
@@ -224,8 +227,10 @@ Enum variants marked as `#[variants(skip)]` are excluded from iteration.");
 /// # fn main() {
 /// assert_eq!(6, Weekday::iter_variants().count());
 ///
-/// assert_eq!(Some("Monday"), Weekday::Monday.as_str());
-/// assert_eq!(Some("Mon"), Weekday::Monday.as_abbr_str());
+/// assert_eq!("Monday", Weekday::Monday.as_str());
+/// assert_eq!("Mon", Weekday::Monday.as_abbr_str());
+/// assert_eq!(String::from("Monday"), Weekday::Monday.to_string());
+/// assert_eq!(String::from("Today is Monday"), format!("Today is {}", Weekday::Monday));
 ///
 /// let mut weekdays = Weekday::iter_variants();
 /// assert_eq!(Some(Weekday::Tuesday), weekdays.next());
