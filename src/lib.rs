@@ -157,6 +157,12 @@ Enum variants marked as `#[variants(skip)]` are excluded from iteration.");
                 Self::iter_variants().map(Self::as_abbr_str)
             }
         }
+
+        impl ::std::fmt::Display for #ident {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
     })
 }
 
