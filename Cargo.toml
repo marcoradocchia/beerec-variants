@@ -4,6 +4,7 @@ authors = ["Marco Radocchia <mar.radocchia@proton.me>"]
 description = "Procedural derive macro to generate boilerplate on unit variants enum types"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 [lib]
 proc-macro = true
