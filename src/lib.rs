@@ -680,9 +680,9 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 ///
 /// For custom string overrides:
 ///
-/// - `#[variants(rename = "...")]` is equivalent to `#[variants(rename(...))]`;
+/// - `#[variants(rename = "...")]` is equivalent to `#[variants(rename("..."))]`;
 /// - `#[variants(rename_abbr = "...")]` is equivalent to
-///   `#[variants(rename_abbr(...))]`;
+///   `#[variants(rename_abbr("..."))]`;
 ///
 /// both are valid, supported formats.
 ///
@@ -811,7 +811,7 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 /// assert_eq!("Monday", Weekday::Monday.as_str());
 /// assert_eq!("Mon", Weekday::Monday.as_str_abbr());
 ///
-/// // The enum has been marked as `display`, `std::fmt::Display` implementation is available.
+/// // The enum has been marked as `display`, so `std::fmt::Display` implementation is available.
 /// assert_eq!(String::from("Monday"), Weekday::Monday.to_string());
 /// assert_eq!(String::from("Monday"), format!("{}", Weekday::Monday));
 ///

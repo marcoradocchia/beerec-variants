@@ -1,6 +1,10 @@
 <div align="center">
   <h1 align="center">beerec-variants</h1>
 
+  <div align="center">
+    [crates.io](https://crates.io/crates/beerec-variants) | [docs.rs](https://docs.rs/beerec-variants)
+  </div>
+
   ![GitHub source size](https://img.shields.io/github/languages/code-size/marcoradocchia/beerec-variants?color=ea6962&logo=github&style=flat-square)
   ![GitHub open issues](https://img.shields.io/github/issues-raw/marcoradocchia/beerec-variants?color=d8a657&logo=github&style=flat-square)
   ![GitHub open pull requests](https://img.shields.io/github/issues-pr-raw/marcoradocchia/beerec-variants?color=89b482&logo=github&style=flat-square)
@@ -58,6 +62,7 @@ assert_eq!("NORTH", CardinalDirection::North.as_str());
 assert_eq!("EAST", CardinalDirection::East.as_str());
 assert_eq!("SOUTH", CardinalDirection::South.as_str());
 assert_eq!("WEST", CardinalDirection::West.as_str());
+
 assert_eq!("NOR", CardinalDirection::North.as_str_abbr());
 assert_eq!("EAS", CardinalDirection::East.as_str_abbr());
 assert_eq!("SOU", CardinalDirection::South.as_str_abbr());
@@ -76,6 +81,7 @@ enum State {
 assert_eq!("active", State::Active.as_str());
 assert_eq!("inactive", State::Inactive.as_str());
 assert_eq!("disabled", State::Disabled.as_str());
+
 assert_eq!("ACT", State::Active.as_str_abbr());
 assert_eq!("INA", State::Inactive.as_str_abbr());
 assert_eq!("DIS", State::Disabled.as_str_abbr());
@@ -95,6 +101,7 @@ assert_eq!(String::from("Spring"), Season::Spring.to_string());
 assert_eq!(String::from("Summer"), Season::Summer.to_string());
 assert_eq!(String::from("Autumn"), Season::Autumn.to_string());
 assert_eq!(String::from("Winter"), Season::Winter.to_string());
+
 assert_eq!(String::from("Spring"), format!("{}", Season::Spring));
 assert_eq!(String::from("Summer"), format!("{}", Season::Summer));
 assert_eq!(String::from("Autumn"), format!("{}", Season::Autumn));
@@ -119,9 +126,9 @@ Valid `rename` and `rename_abbr` customization strategies are:
 
 For custom string overrides:
 
-- `#[variants(rename = "...")]` is equivalent to `#[variants(rename(...))]`;
+- `#[variants(rename = "...")]` is equivalent to `#[variants(rename("..."))]`;
 - `#[variants(rename_abbr = "...")]` is equivalent to
-  `#[variants(rename_abbr(...))]`;
+  `#[variants(rename_abbr("..."))]`;
 
 both are valid, supported formats.
 
@@ -139,6 +146,7 @@ enum Format {
 assert_eq!("Xml", Format::Xml.as_str());
 assert_eq!("Csv", Format::Csv.as_str());
 assert_eq!("plain-text", Format::PlainText.as_str());
+
 assert_eq!("Xml", Format::Xml.as_str_abbr());
 assert_eq!("Csv", Format::Csv.as_str_abbr());
 assert_eq!("txt", Format::PlainText.as_str_abbr());
@@ -212,9 +220,9 @@ The macro will produce a compile error if:
 
 # Notes
 
-Deriving [`Variants`] on type automatically implements [`Clone`] and
+Deriving `Variants` on type automatically implements [`Clone`] and
 [`Copy`] for such type. This means that deriving either trait on a type that
-also derives [`Variants`] will result in a "conflicting implementations"
+also derives `Variants` will result in a "conflicting implementations"
 compilation error.
 
 # Examples
@@ -242,7 +250,7 @@ assert_eq!(6, Weekday::iter_variants().count());
 assert_eq!("Monday", Weekday::Monday.as_str());
 assert_eq!("Mon", Weekday::Monday.as_str_abbr());
 
-// The enum has been marked as `display`, `std::fmt::Display` implementation is available.
+// The enum has been marked as `display`, so `std::fmt::Display` implementation is available.
 assert_eq!(String::from("Monday"), Weekday::Monday.to_string());
 assert_eq!(String::from("Monday"), format!("{}", Weekday::Monday));
 
