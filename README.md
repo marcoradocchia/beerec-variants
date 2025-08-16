@@ -1,18 +1,15 @@
 <div align="center">
   <h1 align="center">beerec-variants</h1>
 
-  <div align="center">
-    [crates.io](https://crates.io/crates/beerec-variants) | [docs.rs](https://docs.rs/beerec-variants)
-  </div>
-
-  ![GitHub source size](https://img.shields.io/github/languages/code-size/marcoradocchia/beerec-variants?color=ea6962&logo=github&style=flat-square)
-  ![GitHub open issues](https://img.shields.io/github/issues-raw/marcoradocchia/beerec-variants?color=d8a657&logo=github&style=flat-square)
-  ![GitHub open pull requests](https://img.shields.io/github/issues-pr-raw/marcoradocchia/beerec-variants?color=89b482&logo=github&style=flat-square)
-  ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/marcoradocchia/beerec-variants/rust.yml?color=7daea3&logo=github&style=flat-square)
-  ![GitHub sponsors](https://img.shields.io/github/sponsors/marcoradocchia?color=d3869b&logo=github&style=flat-square)
-  ![Crates.io Total Downloads](https://img.shields.io/crates/d/beerec-variants?color=89b482&logo=rust&style=flat-square)
-  ![Crates.io Version](https://img.shields.io/crates/v/beerec-variants?color=d3869b&logo=rust&style=flat-square)
-  ![GitHub license](https://img.shields.io/github/license/marcoradocchia/beerec-variants?color=e78a4e&style=flat-square)
+  [![GitHub source size](https://img.shields.io/github/languages/code-size/marcoradocchia/beerec-variants?color=ea6962&logo=github&style=flat-square)](https://github.com/marcoradocchia/beerec-variants)
+  [![GitHub open issues](https://img.shields.io/github/issues-raw/marcoradocchia/beerec-variants?color=d8a657&logo=github&style=flat-square)](https://github.com/marcoradocchia/beerec-variants/issues)
+  [![GitHub open pull requests](https://img.shields.io/github/issues-pr-raw/marcoradocchia/beerec-variants?color=89b482&logo=github&style=flat-square)](https://github.com/marcoradocchia/beerec-variants/pulls)
+  [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/marcoradocchia/beerec-variants/rust.yml?color=7daea3&logo=github&style=flat-square)](https://github.com/marcoradocchia/beerec-variants/actions)
+  [![GitHub sponsors](https://img.shields.io/github/sponsors/marcoradocchia?color=d3869b&logo=github&style=flat-square)](https://github.com/sponsors/marcoradocchia)
+  [![Crates.io Total Downloads](https://img.shields.io/crates/d/beerec-variants?color=89b482&logo=rust&style=flat-square&label=crates.io%20downloads)](https://crates.io/crates/beerec-variants)
+  [![Crates.io Version](https://img.shields.io/crates/v/beerec-variants?color=d3869b&logo=rust&style=flat-square&label=crates.io%20version)](https://crates.io/crates/beerec-variants)
+  [![Docs.rs](https://img.shields.io/docsrs/beerec-variants?color=7c6f64&style=flat-square&logo=rust)](https://docs.rs/beerec-variants)
+  [![GitHub license](https://img.shields.io/github/license/marcoradocchia/beerec-variants?color=e78a4e&style=flat-square)](https://github.com/marcoradocchia/beerec-variants/blob/main/LICENSE)
 </div>
 
 Derive macro to generate boilerplate on unit variants `enum` types.
