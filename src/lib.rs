@@ -591,6 +591,8 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 /// ## Examples
 ///
 /// ```rust
+/// # use beerec_variants::Variants;
+/// #
 /// #[derive(Variants)]
 /// #[variants(rename(uppercase))]
 /// enum CardinalDirection {
@@ -614,6 +616,8 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 /// ```
 ///
 /// ```rust
+/// # use beerec_variants::Variants;
+/// #
 /// #[derive(Variants)]
 /// #[variants(rename(lowercase), rename_abbr(uppercase))]
 /// enum State {
@@ -634,6 +638,8 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 /// ```
 ///
 /// ```rust
+/// # use beerec_variants::Variants;
+/// #
 /// #[derive(Variants)]
 /// #[variants(display)]
 /// enum Season {
@@ -683,6 +689,8 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 /// ## Examples
 ///
 /// ```rust
+/// # use beerec_variants::Variants;
+/// #
 /// #[derive(Variants)]
 /// enum Format {
 ///     Xml,
@@ -778,9 +786,9 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 /// # Examples
 ///
 /// ```rust
-/// use beerec_variants::Variants;
-///
-/// #[derive(Variants, PartialEq, Eq)]
+/// # use beerec_variants::Variants;
+/// #
+/// #[derive(Variants, Debug, PartialEq, Eq)]
 /// #[variants(display)]
 /// enum Weekday {
 ///     #[variants(skip)]
@@ -789,7 +797,7 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 ///     Tuesday,
 ///     #[variants(rename_abbr = "wed")]
 ///     Wednesday,
-///     #[variants(rename = "Giovedì", rename_abbr = lowercase)]
+///     #[variants(rename = "Giovedì", rename_abbr(lowercase))]
 ///     Thursday,
 ///     Friday,
 ///     Saturday,
@@ -817,21 +825,21 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 /// assert_eq!(None, weekdays.next());
 ///
 /// let mut weekdays_as_str = Weekday::iter_variants_as_str();
-/// assert_eq!(Some("DayAfterMonday"), weekdays.next());
-/// assert_eq!(Some("Wednesday"), weekdays.next());
-/// assert_eq!(Some("Giovedì"), weekdays.next());
-/// assert_eq!(Some("Friday"), weekdays.next());
-/// assert_eq!(Some("Saturday"), weekdays.next());
-/// assert_eq!(Some("Sunday"), weekdays.next());
+/// assert_eq!(Some("DayAfterMonday"), weekdays_as_str.next());
+/// assert_eq!(Some("Wednesday"), weekdays_as_str.next());
+/// assert_eq!(Some("Giovedì"), weekdays_as_str.next());
+/// assert_eq!(Some("Friday"), weekdays_as_str.next());
+/// assert_eq!(Some("Saturday"), weekdays_as_str.next());
+/// assert_eq!(Some("Sunday"), weekdays_as_str.next());
 /// assert_eq!(None, weekdays.next());
 ///
 /// let mut weekdays_as_str_abbr = Weekday::iter_variants_as_str_abbr();
-/// assert_eq!(Some("tue"), weekdays.next());
-/// assert_eq!(Some("wed"), weekdays.next());
-/// assert_eq!(Some("gio"), weekdays.next());
-/// assert_eq!(Some("Fri"), weekdays.next());
-/// assert_eq!(Some("Sat"), weekdays.next());
-/// assert_eq!(Some("Sun"), weekdays.next());
+/// assert_eq!(Some("tue"), weekdays_as_str_abbr.next());
+/// assert_eq!(Some("wed"), weekdays_as_str_abbr.next());
+/// assert_eq!(Some("gio"), weekdays_as_str_abbr.next());
+/// assert_eq!(Some("Fri"), weekdays_as_str_abbr.next());
+/// assert_eq!(Some("Sat"), weekdays_as_str_abbr.next());
+/// assert_eq!(Some("Sun"), weekdays_as_str_abbr.next());
 /// assert_eq!(None, weekdays.next());
 /// # }
 /// ```

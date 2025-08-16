@@ -1,10 +1,9 @@
 use beerec_variants::Variants;
 pub enum Weekday {
     Monday,
-    #[variants(skip)]
+    #[variants(rename = "DayAfterMonday", rename_abbr("Tue"))]
     Tuesday,
     Wednesday,
-    #[variants(skip)]
     Thursday,
     Friday,
     Saturday,
@@ -19,9 +18,11 @@ impl ::std::marker::Copy for Weekday {}
 #[automatically_derived]
 impl Weekday {
     /// The array of iterable (i.e. non-skipped) enum variants.
-    const ITERABLE_VARIANTS: [Self; 5usize] = [
+    const ITERABLE_VARIANTS: [Self; 7usize] = [
         Self::Monday,
+        Self::Tuesday,
         Self::Wednesday,
+        Self::Thursday,
         Self::Friday,
         Self::Saturday,
         Self::Sunday,
@@ -44,7 +45,7 @@ This method applies rename strategies following a priority-based fallback approa
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Monday => "Monday",
-            Self::Tuesday => "Tuesday",
+            Self::Tuesday => "DayAfterMonday",
             Self::Wednesday => "Wednesday",
             Self::Thursday => "Thursday",
             Self::Friday => "Friday",
