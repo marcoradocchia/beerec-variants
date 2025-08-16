@@ -1,12 +1,11 @@
 use beerec_variants::Variants;
 
 #[derive(Variants)]
+#[variants(display)]
 pub enum Weekday {
     Monday,
-    #[variants(skip)]
     Tuesday,
     Wednesday,
-    #[variants(skip)]
     Thursday,
     Friday,
     Saturday,

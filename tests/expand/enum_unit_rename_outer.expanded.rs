@@ -1,10 +1,9 @@
 use beerec_variants::Variants;
+#[variants(rename(uppercase), rename_abbr(lowercase))]
 pub enum Weekday {
     Monday,
-    #[variants(skip)]
     Tuesday,
     Wednesday,
-    #[variants(skip)]
     Thursday,
     Friday,
     Saturday,
@@ -19,9 +18,11 @@ impl ::std::marker::Copy for Weekday {}
 #[automatically_derived]
 impl Weekday {
     /// The array of iterable (i.e. non-skipped) enum variants.
-    const ITERABLE_VARIANTS: [Self; 5usize] = [
+    const ITERABLE_VARIANTS: [Self; 7usize] = [
         Self::Monday,
+        Self::Tuesday,
         Self::Wednesday,
+        Self::Thursday,
         Self::Friday,
         Self::Saturday,
         Self::Sunday,
@@ -43,13 +44,13 @@ This method applies rename strategies following a priority-based fallback approa
    specified.*/
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Monday => "Monday",
-            Self::Tuesday => "Tuesday",
-            Self::Wednesday => "Wednesday",
-            Self::Thursday => "Thursday",
-            Self::Friday => "Friday",
-            Self::Saturday => "Saturday",
-            Self::Sunday => "Sunday",
+            Self::Monday => "MONDAY",
+            Self::Tuesday => "TUESDAY",
+            Self::Wednesday => "WEDNESDAY",
+            Self::Thursday => "THURSDAY",
+            Self::Friday => "FRIDAY",
+            Self::Saturday => "SATURDAY",
+            Self::Sunday => "SUNDAY",
         }
     }
     #[inline]
@@ -84,13 +85,13 @@ determine the base string representation before applying the abbreviation:
    specified.*/
     pub fn as_str_abbr(self) -> &'static str {
         match self {
-            Self::Monday => "Mon",
-            Self::Tuesday => "Tue",
-            Self::Wednesday => "Wed",
-            Self::Thursday => "Thu",
-            Self::Friday => "Fri",
-            Self::Saturday => "Sat",
-            Self::Sunday => "Sun",
+            Self::Monday => "mon",
+            Self::Tuesday => "tue",
+            Self::Wednesday => "wed",
+            Self::Thursday => "thu",
+            Self::Friday => "fri",
+            Self::Saturday => "sat",
+            Self::Sunday => "sun",
         }
     }
     /**Iterates over enum variants.

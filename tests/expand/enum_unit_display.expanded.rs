@@ -1,10 +1,9 @@
 use beerec_variants::Variants;
+#[variants(display)]
 pub enum Weekday {
     Monday,
-    #[variants(skip)]
     Tuesday,
     Wednesday,
-    #[variants(skip)]
     Thursday,
     Friday,
     Saturday,
@@ -19,9 +18,11 @@ impl ::std::marker::Copy for Weekday {}
 #[automatically_derived]
 impl Weekday {
     /// The array of iterable (i.e. non-skipped) enum variants.
-    const ITERABLE_VARIANTS: [Self; 5usize] = [
+    const ITERABLE_VARIANTS: [Self; 7usize] = [
         Self::Monday,
+        Self::Tuesday,
         Self::Wednesday,
+        Self::Thursday,
         Self::Friday,
         Self::Saturday,
         Self::Sunday,
@@ -116,5 +117,10 @@ See `Weekday::as_str_abbr` for further details about yielded values.*/
         Item = &'static str,
     > {
         Self::iter_variants().map(Self::as_str_abbr)
+    }
+}
+impl ::std::fmt::Display for Weekday {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        f.write_str(self.as_str())
     }
 }
