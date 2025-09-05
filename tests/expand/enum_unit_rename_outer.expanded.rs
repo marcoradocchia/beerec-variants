@@ -9,12 +9,12 @@ pub enum Weekday {
     Saturday,
     Sunday,
 }
+impl ::std::marker::Copy for Weekday {}
 impl ::std::clone::Clone for Weekday {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl ::std::marker::Copy for Weekday {}
 #[automatically_derived]
 impl Weekday {
     /// The array of iterable (i.e. non-skipped) enum variants.
