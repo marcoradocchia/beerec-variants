@@ -411,6 +411,7 @@ struct TargetEnum {
 /// can map the error value to a compilation error, providing more precise
 /// error messages.
 #[rustfmt::skip]
+#[allow(clippy::too_many_lines)]
 fn derive_enum_variants_impl(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let target_enum = TargetEnum::from_derive_input(input)?;
 
@@ -432,7 +433,7 @@ fn derive_enum_variants_impl(input: &DeriveInput) -> syn::Result<TokenStream2> {
 
     let ident = &target_enum.ident;
 
-    let as_str_doc = format!(r#"Returns a string representation of the [`{ident}`] variant.
+    let as_str_doc = format!(r"Returns a string representation of the [`{ident}`] variant.
 
 This method applies rename strategies following a priority-based fallback approach:
 
@@ -444,9 +445,9 @@ This method applies rename strategies following a priority-based fallback approa
    been specified for the type;
 1. **No renaming** (_default_) - converts the variant identifier to a string
    if neither the type-level nor the variant-level rename attribute has been
-   specified."#);
+   specified.");
 
-    let as_str_abbr_doc = format!(r#"Returns an abbreviated string representation of the [`{ident}`] variant.
+    let as_str_abbr_doc = format!(r"Returns an abbreviated string representation of the [`{ident}`] variant.
 
 This method applies rename strategies on the string representation of the
 variant, following a priority-based fallback approach:
@@ -473,7 +474,7 @@ determine the base string representation before applying the abbreviation:
    been specified for the type;
 1. **No renaming** (_default_) - converts the variant identifier to a string
    if neither the type-level nor the variant-level rename attribute has been
-   specified."#);
+   specified.");
 
     let iter_variants_doc = r"Iterates over enum variants.
 
@@ -492,13 +493,13 @@ Enum variants marked with the `#[variants(skip)]` attribute are excluded from it
 See `{ident}::as_str_abbr` for further details about yielded values.");
 
     let mut generated = quote::quote! {
+        impl ::std::marker::Copy for #ident {}
+
         impl ::std::clone::Clone for #ident {
             fn clone(&self) -> Self {
                 *self
             }
         }
-
-        impl ::std::marker::Copy for #ident {}
 
         #[automatically_derived]
         impl #ident {
