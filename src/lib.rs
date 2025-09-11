@@ -6,6 +6,7 @@ use std::borrow::Cow;
 
 use darling::ast::{Data, NestedMeta};
 use darling::{FromDeriveInput, FromMeta, FromVariant};
+use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use syn::{DeriveInput, Ident, Lit, Meta};
@@ -178,6 +179,15 @@ impl TargetVariant {
         let name = self.as_str(outer_rename);
 
         quote::quote! { Self::#ident => #name }
+    }
+
+    /// Returns a quoted (double-quotes) version of the final string
+    /// representation of the variant.
+    ///
+    /// For further details about the final string representation (i.e. rename
+    /// strategies, etc.) see [`TargetVariant::as_str`].
+    fn as_quoted_string(&self, outer_rename: Option<OuterRenameStrategy>) -> String {
+        format!("\"{}\"", self.as_str(outer_rename))
     }
 }
 
@@ -364,6 +374,19 @@ impl TargetVariant {
 
         quote::quote! { Self::#ident => #name_abbr }
     }
+
+    /// Returns a quoted (double-quotes) version of the final abbreviated string
+    /// representation of the variant.
+    ///
+    /// For further details about the final abbreviated string representation
+    /// (i.e. rename strategies, etc.) see [`TargetVariant::as_str_abbr`].
+    fn as_quoted_string_abbr(
+        &self,
+        outer_rename: Option<OuterRenameStrategy>,
+        outer_rename_abbr: Option<OuterRenameStrategy>,
+    ) -> String {
+        format!("\"{}\"", self.as_str_abbr(outer_rename, outer_rename_abbr))
+    }
 }
 
 /// The type representing the `enum` type the macro is being derived on.
@@ -431,9 +454,33 @@ fn derive_enum_variants_impl(input: &DeriveInput) -> syn::Result<TokenStream2> {
         variant.as_str_abbr_match_branch(target_enum.rename, target_enum.rename_abbr)
     });
 
+    let variants_list_str_iter = variants.iter().filter(|variant| !variant.skip).map(|variant| {
+        Cow::Owned(variant.as_quoted_string(target_enum.rename))
+    });
+
+    let variants_list_str = Itertools::intersperse(
+        variants_list_str_iter,
+        Cow::Borrowed(", "),
+    )
+    .collect::<String>();
+    
+    let variants_list_str_abbr_iter = variants.iter().filter(|variant| !variant.skip).map(|variant| {
+        Cow::Owned(variant.as_quoted_string_abbr(target_enum.rename, target_enum.rename_abbr))
+    });
+
+    let variants_list_str_abbr = Itertools::intersperse(
+        variants_list_str_abbr_iter,
+        Cow::Borrowed(", "),
+    )
+    .collect::<String>();
+
     let ident = &target_enum.ident;
 
-    let as_str_doc = format!(r"Returns a string representation of the [`{ident}`] variant.
+    let iterable_variants_doc = format!("The array of iterable (i.e. non-skipped) [`{ident}`] variants.");
+    let iterable_variants_count_doc = format!("The number of iterable (i.e. non-skipped) [`{ident}`] variants.");
+
+    let as_str_doc = format!(
+        r"Returns a string representation of the [`{ident}`] variant.
 
 This method applies rename strategies following a priority-based fallback approach:
 
@@ -445,9 +492,11 @@ This method applies rename strategies following a priority-based fallback approa
    been specified for the type;
 1. **No renaming** (_default_) - converts the variant identifier to a string
    if neither the type-level nor the variant-level rename attribute has been
-   specified.");
+   specified."
+    );
 
-    let as_str_abbr_doc = format!(r"Returns an abbreviated string representation of the [`{ident}`] variant.
+    let as_str_abbr_doc = format!(
+        r"Returns an abbreviated string representation of the [`{ident}`] variant.
 
 This method applies rename strategies on the string representation of the
 variant, following a priority-based fallback approach:
@@ -474,23 +523,92 @@ determine the base string representation before applying the abbreviation:
    been specified for the type;
 1. **No renaming** (_default_) - converts the variant identifier to a string
    if neither the type-level nor the variant-level rename attribute has been
-   specified.");
+   specified."
+    );
 
-    let iter_variants_doc = r"Iterates over enum variants.
+    let iter_variants_doc = format!(
+        r"Iterates over [`{ident}`] variants.
 
-Enum variants marked with the `#[variants(skip)]` attribute are ignored.";
+Enum variants marked with the `#[variants(skip)]` attribute are ignored."
+    );
 
-    let iter_variants_as_str_doc = format!(r"Iterates over string representation of enum variants.
-
-Enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
-
-See `{ident}::as_str` for further details about yielded values.");
-
-    let iter_variants_as_str_abbr_doc = format!(r"Iterates over abbreviated string representation of enum variants.
+    let iter_variants_as_str_doc = format!(
+        r"Iterates over string representation of [`{ident}`] variants.
 
 Enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
 
-See `{ident}::as_str_abbr` for further details about yielded values.");
+See [`{ident}::as_str`] for further details about yielded values."
+    );
+
+    let iter_variants_as_str_abbr_doc = format!(
+        r"Iterates over abbreviated string representation of [`{ident}`] variants.
+
+Enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
+
+See [`{ident}::as_str_abbr`] for further details about yielded values."
+    );
+
+    let variants_list_str_doc = format!(
+        r##"Returns a list of quoted (double-quotes) and comma separated string
+representations of the [`{ident}`] variants.
+
+See [`{ident}::as_str`] for further details about the string representation.
+
+# Examples
+
+```rust
+# fn main() {{
+use beerec_variants::Variants;
+
+#[derive(Variants)]
+enum Weekday {{
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}}
+
+assert_eq!(
+    "\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\"",
+    Weekday::variants_list_str(),
+);
+# }}
+```"##
+    );
+
+    let variants_list_str_abbr_doc = format!(
+        r##"Returns a list of quoted (double-quotes) and comma separated abbreviated string
+representations of the [`{ident}`] variants.
+
+See [`{ident}::as_str_abbr`] for further details about the abbreviated string representation.
+
+# Examples
+
+```rust
+# fn main() {{
+use beerec_variants::Variants;
+
+#[derive(Variants)]
+enum Weekday {{
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}}
+
+assert_eq!(
+    "\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\", \"Sun\"",
+    Weekday::variants_list_str(),
+);
+# }}
+```"##
+    );
 
     let mut generated = quote::quote! {
         impl ::std::marker::Copy for #ident {}
@@ -503,15 +621,18 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 
         #[automatically_derived]
         impl #ident {
-            /// The array of iterable (i.e. non-skipped) enum variants.
+            #[doc = #iterable_variants_doc]
             const ITERABLE_VARIANTS: [Self; #variant_count] = [
                 #(Self::#variant_idents,)*
             ];
 
+            #[doc = #iterable_variants_count_doc]
+            const ITERABLE_VARIANTS_COUNT: usize = #variant_count;
+
             #[inline]
             #[must_use]
             #[doc = #as_str_doc]
-            pub fn as_str(self) -> &'static str {
+            pub const fn as_str(self) -> &'static str {
                 match self {
                     #(#variant_as_str_match_branches,)*
                 }
@@ -520,7 +641,7 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
             #[inline]
             #[must_use]
             #[doc = #as_str_abbr_doc]
-            pub fn as_str_abbr(self) -> &'static str {
+            pub const fn as_str_abbr(self) -> &'static str {
                 match self {
                     #(#variant_as_str_abbr_match_branches,)*
                 }
@@ -540,11 +661,21 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
             pub fn iter_variants_as_str_abbr() -> impl ::std::iter::Iterator<Item = &'static str> {
                 Self::iter_variants().map(Self::as_str_abbr)
             }
+
+            #[doc = #variants_list_str_doc]
+            pub fn variants_list_str() -> &'static str {
+                #variants_list_str
+            }
+
+            #[doc = #variants_list_str_abbr_doc]
+            pub fn variants_list_str_abbr() -> &'static str {
+                #variants_list_str_abbr
+            }
         }
     };
 
     if target_enum.display {
-        let generated_display_impl =  quote::quote! {
+        let generated_display_impl = quote::quote! {
             impl ::std::fmt::Display for #ident {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                     f.write_str(self.as_str())
@@ -570,7 +701,11 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 /// - `iter_variants_as_str` - returns an iterator over string representations
 ///   of the target `enum` variants (`&'static str` values);
 /// - `iter_variants_as_str_abbr` - returns an iterator over abbreviated string
-///   representations of the `enum` variants (`&'static str` values).
+///   representations of the `enum` variants (`&'static str` values);
+/// - `variants_list_str` - returns a list of quoted (double-quotes) and comma
+///   separated string representations of the `enum` variants;
+/// - `variants_list_str_abbr` - returns a list of of quoted (double-quotes) and
+///   comma separated abbreviated string representation of the `enum` variants.
 ///
 /// # Enum level attributes
 ///
@@ -667,7 +802,7 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 ///
 /// The macro exposes the following variant attributes:
 ///
-/// - `skip` - excludes the marked variant from iteration;
+/// - `skip` - excludes the marked variant from iteration and listing;
 /// - `rename` - customizes the string representation of the marked variant;
 /// - `rename_abbr` - customizes the abbreviated string representation of the
 ///   marked variant.
@@ -681,7 +816,8 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 ///
 /// For custom string overrides:
 ///
-/// - `#[variants(rename = "...")]` is equivalent to `#[variants(rename("..."))]`;
+/// - `#[variants(rename = "...")]` is equivalent to
+///   `#[variants(rename("..."))]`;
 /// - `#[variants(rename_abbr = "...")]` is equivalent to
 ///   `#[variants(rename_abbr("..."))]`;
 ///
@@ -842,6 +978,16 @@ See `{ident}::as_str_abbr` for further details about yielded values.");
 /// assert_eq!(Some("Sat"), weekdays_as_str_abbr.next());
 /// assert_eq!(Some("Sun"), weekdays_as_str_abbr.next());
 /// assert_eq!(None, weekdays.next());
+///
+/// assert_eq!(
+///     "\"DayAfterMonday\", \"Wednesday\", \"Giovedì\", \"Friday\", \"Saturday\", \"Sunday\"",
+///     Weekday::variants_list_str(),
+/// );
+///
+/// assert_eq!(
+///     "\"tue\", \"wed\", \"gio\", \"Fri\", \"Sat\", \"Sun\"",
+///     Weekday::variants_list_str_abbr(),
+/// );
 /// # }
 /// ```
 ///

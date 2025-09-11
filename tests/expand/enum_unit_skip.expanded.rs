@@ -18,7 +18,7 @@ impl ::std::clone::Clone for Weekday {
 }
 #[automatically_derived]
 impl Weekday {
-    /// The array of iterable (i.e. non-skipped) enum variants.
+    ///The array of iterable (i.e. non-skipped) [`Weekday`] variants.
     const ITERABLE_VARIANTS: [Self; 5usize] = [
         Self::Monday,
         Self::Wednesday,
@@ -26,6 +26,8 @@ impl Weekday {
         Self::Saturday,
         Self::Sunday,
     ];
+    ///The number of iterable (i.e. non-skipped) [`Weekday`] variants.
+    const ITERABLE_VARIANTS_COUNT: usize = 5usize;
     #[inline]
     #[must_use]
     /**Returns a string representation of the [`Weekday`] variant.
@@ -41,7 +43,7 @@ This method applies rename strategies following a priority-based fallback approa
 1. **No renaming** (_default_) - converts the variant identifier to a string
    if neither the type-level nor the variant-level rename attribute has been
    specified.*/
-    pub fn as_str(self) -> &'static str {
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Monday => "Monday",
             Self::Tuesday => "Tuesday",
@@ -82,7 +84,7 @@ determine the base string representation before applying the abbreviation:
 1. **No renaming** (_default_) - converts the variant identifier to a string
    if neither the type-level nor the variant-level rename attribute has been
    specified.*/
-    pub fn as_str_abbr(self) -> &'static str {
+    pub const fn as_str_abbr(self) -> &'static str {
         match self {
             Self::Monday => "Mon",
             Self::Tuesday => "Tue",
@@ -93,28 +95,90 @@ determine the base string representation before applying the abbreviation:
             Self::Sunday => "Sun",
         }
     }
-    /**Iterates over enum variants.
+    /**Iterates over [`Weekday`] variants.
 
 Enum variants marked with the `#[variants(skip)]` attribute are ignored.*/
     pub fn iter_variants() -> impl ::std::iter::Iterator<Item = Self> {
         Self::ITERABLE_VARIANTS.into_iter()
     }
-    /**Iterates over string representation of enum variants.
+    /**Iterates over string representation of [`Weekday`] variants.
 
 Enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
 
-See `Weekday::as_str` for further details about yielded values.*/
+See [`Weekday::as_str`] for further details about yielded values.*/
     pub fn iter_variants_as_str() -> impl ::std::iter::Iterator<Item = &'static str> {
         Self::iter_variants().map(Self::as_str)
     }
-    /**Iterates over abbreviated string representation of enum variants.
+    /**Iterates over abbreviated string representation of [`Weekday`] variants.
 
 Enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
 
-See `Weekday::as_str_abbr` for further details about yielded values.*/
+See [`Weekday::as_str_abbr`] for further details about yielded values.*/
     pub fn iter_variants_as_str_abbr() -> impl ::std::iter::Iterator<
         Item = &'static str,
     > {
         Self::iter_variants().map(Self::as_str_abbr)
+    }
+    /**Returns a list of quoted (double-quotes) and comma separated string
+representations of the [`Weekday`] variants.
+
+See [`Weekday::as_str`] for further details about the string representation.
+
+# Examples
+
+```rust
+# fn main() {
+use beerec_variants::Variants;
+
+#[derive(Variants)]
+enum Weekday {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}
+
+assert_eq!(
+    "\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\"",
+    Weekday::variants_list_str(),
+);
+# }
+```*/
+    pub fn variants_list_str() -> &'static str {
+        "\"Monday\", \"Wednesday\", \"Friday\", \"Saturday\", \"Sunday\""
+    }
+    /**Returns a list of quoted (double-quotes) and comma separated abbreviated string
+representations of the [`Weekday`] variants.
+
+See [`Weekday::as_str_abbr`] for further details about the abbreviated string representation.
+
+# Examples
+
+```rust
+# fn main() {
+use beerec_variants::Variants;
+
+#[derive(Variants)]
+enum Weekday {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}
+
+assert_eq!(
+    "\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\", \"Sun\"",
+    Weekday::variants_list_str(),
+);
+# }
+```*/
+    pub fn variants_list_str_abbr() -> &'static str {
+        "\"Mon\", \"Wed\", \"Fri\", \"Sat\", \"Sun\""
     }
 }
