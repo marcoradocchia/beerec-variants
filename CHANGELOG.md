@@ -20,3 +20,4 @@
 _Initial release._
 
 [0.2.0]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.2.0
+[0.3.0]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.3.0
