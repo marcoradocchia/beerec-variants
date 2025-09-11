@@ -663,12 +663,12 @@ assert_eq!(
             }
 
             #[doc = #variants_list_str_doc]
-            pub fn variants_list_str() -> &'static str {
+            pub const fn variants_list_str() -> &'static str {
                 #variants_list_str
             }
 
             #[doc = #variants_list_str_abbr_doc]
-            pub fn variants_list_str_abbr() -> &'static str {
+            pub const fn variants_list_str_abbr() -> &'static str {
                 #variants_list_str_abbr
             }
         }
