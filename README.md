@@ -24,7 +24,11 @@ The macro generates the following methods:
 - `iter_variants_as_str` - returns an iterator over string representations
   of the target `enum` variants (`&'static str` values);
 - `iter_variants_as_str_abbr` - returns an iterator over abbreviated string
-  representations of the `enum` variants (`&'static str` values).
+  representations of the `enum` variants (`&'static str` values);
+- `variants_list_str` - returns a list of quoted (double-quotes) and comma
+  separated string representations of the `enum` variants;
+- `variants_list_str_abbr` - returns a list of of quoted (double-quotes) and
+  comma separated abbreviated string representation of the `enum` variants.
 
 # Enum level attributes
 
@@ -109,7 +113,7 @@ assert_eq!(String::from("Winter"), format!("{}", Season::Winter));
 
 The macro exposes the following variant attributes:
 
-- `skip` - excludes the marked variant from iteration;
+- `skip` - excludes the marked variant from iteration and listing;
 - `rename` - customizes the string representation of the marked variant;
 - `rename_abbr` - customizes the abbreviated string representation of the
   marked variant.
@@ -123,7 +127,8 @@ Valid `rename` and `rename_abbr` customization strategies are:
 
 For custom string overrides:
 
-- `#[variants(rename = "...")]` is equivalent to `#[variants(rename("..."))]`;
+- `#[variants(rename = "...")]` is equivalent to
+  `#[variants(rename("..."))]`;
 - `#[variants(rename_abbr = "...")]` is equivalent to
   `#[variants(rename_abbr("..."))]`;
 
@@ -277,6 +282,16 @@ assert_eq!(Some("Fri"), weekdays_as_str_abbr.next());
 assert_eq!(Some("Sat"), weekdays_as_str_abbr.next());
 assert_eq!(Some("Sun"), weekdays_as_str_abbr.next());
 assert_eq!(None, weekdays.next());
+
+assert_eq!(
+    "\"DayAfterMonday\", \"Wednesday\", \"Giovedì\", \"Friday\", \"Saturday\", \"Sunday\"",
+    Weekday::variants_list_str(),
+);
+
+assert_eq!(
+    "\"tue\", \"wed\", \"gio\", \"Fri\", \"Sat\", \"Sun\"",
+    Weekday::variants_list_str_abbr(),
+);
 ```
 
 [`Clone`]: https://doc.rust-lang.org/std/clone/trait.Clone.html

@@ -6,7 +6,7 @@ repository = "https://github.com/marcoradocchia/beerec-variants"
 keywords = ["rust", "derive", "macro", "enum", "boilerplate"]
 categories = ["rust-patterns"]
 readme = "README.md"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 
@@ -14,19 +14,19 @@ license = "MIT"
 proc-macro = true
 
 [dependencies.darling]
-version = "0.21.2"
+version = "0.21.3"
 
 [dependencies.itertools]
 version = "0.14.0"
 
 [dependencies.proc-macro2]
-version = "1.0.95"
+version = "1.0.101"
 
 [dependencies.quote]
 version = "1.0.40"
 
 [dependencies.syn]
-version = "2.0.104"
+version = "2.0.106"
 
 [dev-dependencies.macrotest]
 version = "1.2.0"
@@ -35,10 +35,10 @@ version = "1.2.0"
 version = "1.0.110"
 
 [lints.clippy]
+enum_variant_names = "allow"
 map_unwrap_or = "allow"
 match_bool = "allow"
 match_same_arms = "allow"
-enum_variant_names = "allow"
 module_name_repetitions = "allow"
 
 [lints.clippy.pedantic]
