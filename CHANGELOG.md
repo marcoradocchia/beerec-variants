@@ -2,6 +2,8 @@
 
 ## [0.3.0] - 2025-09-11
 
+### Changed
+
 - Mark `variants_list_str` & `variants_list_str_abbr` methods as `const` for compile time evaluation ([`331f3d2`](https://github.com/marcoradocchia/beerec-variants/commit/331f3d2)) (Marco Radocchia)
 
 ## [0.2.0] - 2025-09-11
