@@ -147,7 +147,7 @@ assert_eq!(
 );
 # }
 ```*/
-    pub fn variants_list_str() -> &'static str {
+    pub const fn variants_list_str() -> &'static str {
         "\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\""
     }
     /**Returns a list of quoted (double-quotes) and comma separated abbreviated string
@@ -178,7 +178,7 @@ assert_eq!(
 );
 # }
 ```*/
-    pub fn variants_list_str_abbr() -> &'static str {
+    pub const fn variants_list_str_abbr() -> &'static str {
         "\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\", \"Sun\""
     }
 }
