@@ -549,65 +549,17 @@ See [`{ident}::as_str_abbr`] for further details about yielded values."
     );
 
     let variants_list_str_doc = format!(
-        r##"Returns a list of quoted (double-quotes) and comma separated string
+        r"Returns a list of quoted (double-quotes) and comma separated string
 representations of the [`{ident}`] variants.
 
-See [`{ident}::as_str`] for further details about the string representation.
-
-# Examples
-
-```rust
-# fn main() {{
-use beerec_variants::Variants;
-
-#[derive(Variants)]
-enum Weekday {{
-    Monday,
-    Tuesday,
-    Wednesday,
-    Thursday,
-    Friday,
-    Saturday,
-    Sunday,
-}}
-
-assert_eq!(
-    "\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\"",
-    Weekday::variants_list_str(),
-);
-# }}
-```"##
+See [`{ident}::as_str`] for further details about the string representation."
     );
 
     let variants_list_str_abbr_doc = format!(
-        r##"Returns a list of quoted (double-quotes) and comma separated abbreviated string
+        r"Returns a list of quoted (double-quotes) and comma separated abbreviated string
 representations of the [`{ident}`] variants.
 
-See [`{ident}::as_str_abbr`] for further details about the abbreviated string representation.
-
-# Examples
-
-```rust
-# fn main() {{
-use beerec_variants::Variants;
-
-#[derive(Variants)]
-enum Weekday {{
-    Monday,
-    Tuesday,
-    Wednesday,
-    Thursday,
-    Friday,
-    Saturday,
-    Sunday,
-}}
-
-assert_eq!(
-    "\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\", \"Sun\"",
-    Weekday::variants_list_str(),
-);
-# }}
-```"##
+See [`{ident}::as_str_abbr`] for further details about the abbreviated string representation."
     );
 
     let mut generated = quote::quote! {
