@@ -156,7 +156,7 @@ assert_eq!("txt", Format::PlainText.as_str_abbr());
 
 # String representation renaming priority
 
-When using _string representations_ of enum variants, renaming can be
+To produce _string representations_ of enum variants, renaming can be
 applied at both the type level and variant level. The string representation
 of each variant is obtained by applying rename strategies following a
 priority-based fallback approach:
@@ -173,7 +173,7 @@ priority-based fallback approach:
 
 # Abbreviated string representation renaming priority
 
-When using _abbreviated string representation_ of the enum variants,
+To produce _abbreviated string representations_ of the enum variants,
 renaming can be applied at both the type level and the variant level. The
 abbreviated string representation of each variant is obtained by applying
 rename strategies following a priority-based fallback approach:
@@ -185,12 +185,13 @@ rename strategies following a priority-based fallback approach:
 1. **Type-level attribute** (_fallback_) - uses the string produced by the
    rename strategy from the `#[variants(rename(...))]` attribute, if one has
    been specified for the type;
-1. **No renaming** (_default_) - converts the variant identifier to an
-   abbreviated string if neither the type-level nor the variant-level rename
-   attribute has been specified.
+1. **No renaming** (_default_) - abbreviates the full length string
+   representation of the variant as is, without applying any renaming
+   strategy.
 
 Likewise, the renaming follows a priority-based fallback approach to
-determine the base string representation before applying the abbreviation:
+determine the full length string representation before applying the
+abbreviation:
 
 1. **Variant-level attribute** (_highest priority_) - uses the string
    produced by the rename strategy from the `#[variants(rename(...))]`

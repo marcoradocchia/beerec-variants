@@ -152,14 +152,14 @@ impl TargetVariant {
     }
 
     /// Returns the final string representation of the variant.
-    ///
+    //
     /// This method applies rename strategies following a priority-based
     /// fallback approach:
     ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - returns the string
+    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
     ///    produced by the rename strategy from the `#[variants(rename(...))]`
     ///    inner attribute, if one has been specified for the variant;
-    /// 1. [`OuterRenameStrategy`] (_fallback_) - returns the string produced by
+    /// 1. [`OuterRenameStrategy`] (_fallback_) - uses the string produced by
     ///    the rename strategy from the `#[variants(rename(...))]` outer
     ///    attribute, if one has been specified for the type;
     /// 1. **No renaming** (_default_) - converts the variant identifier to a
@@ -197,7 +197,7 @@ impl TargetVariant {
     /// [`InnerRenameStrategy::Uppercase`] renaming strategy.
     ///
     /// The renaming follows a priority-based fallback approach to determine the
-    /// base string representation before applying the abbreviation:
+    /// full length string representation before applying the abbreviation:
     ///
     /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
     ///    produced by the rename strategy from the `#[variants(rename(...))]`
@@ -214,7 +214,7 @@ impl TargetVariant {
     /// [`InnerRenameStrategy::Lowercase`] renaming strategy.
     ///
     /// The renaming follows a priority-based fallback approach to determine the
-    /// base string representation before applying the abbreviation:
+    /// full length string representation before applying the abbreviation:
     ///
     /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
     ///    produced by the rename strategy from the `#[variants(rename(...))]`
@@ -237,9 +237,9 @@ impl TargetVariant {
     ///
     /// For the cases where the `#[variants(rename_abbr(...))]` inner attribute
     /// strategy is either [`InnerRenameStrategy::Uppercase`] or
-    /// [`InnerRenameStrategy::Lowercase`], renaming follows a
-    /// priority-based fallback approach to determine the base string
-    /// representation before applying the abbreviation:
+    /// [`InnerRenameStrategy::Lowercase`], renaming follows a priority-based
+    /// fallback approach to determine the full length string representation before
+    /// applying the abbreviation:
     ///
     /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string produced
     ///    by the rename strategy from the `#[variants(rename(...))]` inner
@@ -259,7 +259,7 @@ impl TargetVariant {
     /// [`OuterRenameStrategy::Uppercase`] renaming strategy.
     ///
     /// The renaming follows a priority-based fallback approach to determine the
-    /// base string representation before applying the abbreviation:
+    /// full length string representation before applying the abbreviation:
     ///
     /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
     ///    produced by the rename strategy from the `#[variants(rename(...))]`
@@ -276,7 +276,7 @@ impl TargetVariant {
     /// [`OuterRenameStrategy::Lowercase`] renaming strategy.
     ///
     /// The renaming follows a priority-based fallback approach to determine the
-    /// base string representation before applying the abbreviation:
+    /// full length string representation before applying the abbreviation:
     ///
     /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
     ///    produced by the rename strategy from the `#[variants(rename(...))]`
@@ -293,10 +293,11 @@ impl TargetVariant {
     /// `#[variants(rename_abbr(...))]` outer attribute strategy
     /// (`outer_rename_abbr`), if one has been specified for the type, falling
     /// back to abbreviating the full length final string representation of the
-    /// variant (see [`TargetVariant::as_str`] documentation for further details).
+    /// variant as is (see [`TargetVariant::as_str`] documentation for further
+    /// details).
     ///
     /// The renaming follows a priority-based fallback approach to determine the
-    /// base string representation before applying the abbreviation:
+    /// full length string representation before applying the abbreviation:
     ///
     /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string produced
     ///    by the rename strategy from the `#[variants(rename(...))]` inner
@@ -321,23 +322,24 @@ impl TargetVariant {
 
     /// Returns the final abbreviated string representation of the variant.
     ///
-    /// This method applies rename strategies on the string representation of
-    /// the variant, following a priority-based fallback approach:
+    /// This method applies rename strategies for the abbreviated string
+    /// representation of the variant, following a priority-based fallback
+    /// approach:
     ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - returns the
-    ///    abbreviated string produced by the rename strategy from the
+    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the abbreviated
+    ///    string produced by the rename strategy from the
     ///    `#[variants(rename_abbr(...))]` inner attribute, if one has been
     ///    specified for the variant;
-    /// 1. [`OuterRenameStrategy`] (_fallback_) - returns the abbreviated string
+    /// 1. [`OuterRenameStrategy`] (_fallback_) - uses the abbreviated string
     ///    produced by the rename strategy from the
     ///    `#[variants(rename_abbr(...))]` outer attribute, if one has been
     ///    specified for the type;
-    /// 1. **No renaming** (_default_) - converts the variant identifier to an
-    ///    abbreviated string if neither the inner nor the outer rename
-    ///    attribute has been specified.
+    /// 1. **No renaming** (_default_) - abbreviates the full length string
+    ///    representation of the variant as is, without applyaing any renaming
+    ///    strategy (see [`TargetVariant::as_str`]).
     ///
     /// Likewise, the renaming follows a priority-based fallback approach to
-    /// determine the base string representation before applying the
+    /// determine the full length string representation before applying the
     /// abbreviation:
     ///
     /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
@@ -404,12 +406,12 @@ struct TargetEnum {
     /// This field represents the `enum`'s variants and allows iteration over
     /// them and their (abbreviated) string representations.
     data: Data<TargetVariant, ()>,
-    /// The base rename strategy for the `enum` variants' string representation.
+    /// The rename strategy for the `enum` variants' string representation.
     ///
     /// This field represents the `#[variants(rename(...))]` outer attribute.
     #[darling(default)]
     rename: Option<OuterRenameStrategy>,
-    /// The base rename strategy for the `enum` variants' abbreviated string
+    /// The rename strategy for the `enum` variants' abbreviated string
     /// representation.
     ///
     /// This field represents the `#[variants(rename_abbr(...))]` outer
@@ -476,44 +478,57 @@ fn derive_enum_variants_impl(input: &DeriveInput) -> syn::Result<TokenStream2> {
 
     let ident = &target_enum.ident;
 
-    let iterable_variants_doc = format!("The array of iterable (i.e. non-skipped) [`{ident}`] variants.");
-    let iterable_variants_count_doc = format!("The number of iterable (i.e. non-skipped) [`{ident}`] variants.");
+    let iterable_variants_doc = format!(
+        "The array of _iterable_ (i.e. non-skipped) [`{ident}`] variants."
+    );
+
+    let iterable_variants_count_doc = format!(
+        "The number of _iterable_ (i.e. non-skipped) [`{ident}`] variants."
+    );
 
     let as_str_doc = format!(
         r"Returns a string representation of the [`{ident}`] variant.
 
-This method applies rename strategies following a priority-based fallback approach:
+# Notes
 
-1. [`InnerRenameStrategy`] (_highest priority_) - returns the string
+This method is generated by the [`Variants`] derive macro from the [`beerec-variants`]
+crate, it applies rename strategies following a priority-based fallback approach:
+
+1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
    produced by the rename strategy from the `#[variants(rename(...))]`
    attribute, if one has been specified for the variant;
-1. [`OuterRenameStrategy`] (_fallback_) - returns the string produced by the
+1. [`OuterRenameStrategy`] (_fallback_) - uses the string produced by the
    rename strategy from the `#[variants(rename(...))]` attribute, if one has
    been specified for the type;
 1. **No renaming** (_default_) - converts the variant identifier to a string
    if neither the type-level nor the variant-level rename attribute has been
-   specified."
+   specified.
+
+[`beerec-variants`]: https://docs.rs/beerec-variants
+[`Variants`]: https://docs.rs/beerec-variants/latest/beerec_variants/derive.Variants.html"
     );
 
     let as_str_abbr_doc = format!(
         r"Returns an abbreviated string representation of the [`{ident}`] variant.
 
-This method applies rename strategies on the string representation of the
+# Notes
+
+This method is generated by the [`Variants`] derive macro from the [`beerec-variants`]
+crate, it applies rename strategies on the string representation of the
 variant, following a priority-based fallback approach:
 
 1. [`InnerRenameStrategy`] (_highest priority_) - uses the abbreviated
-   string produced by the rename strategy from the
-   `#[variants(rename_abbr(...))]` attribute, if one has been specified for
-   the variant;
-1. [`OuterRenameStrategy`] (_fallback_) - uses the string produced by the
-   rename strategy from the `#[variants(rename(...))]` attribute, if one has
-   been specified for the type;
-1. **No renaming** (_default_) - converts the variant identifier to an
-   abbreviated string if neither the type-level nor the variant-level rename
-   attribute has been specified.
+   string produced by the rename strategy from the `#[variants(rename_abbr(...))]`
+   attribute, if one has been specified for the variant;
+1. [`OuterRenameStrategy`] (_fallback_) - uses the abbreviated string produced
+   by the rename strategy from the `#[variants(rename_abbr(...))]` attribute, if
+   one has been specified for the type;
+1. **No renaming** (_default_) - abbreviates the full length string representation
+   of the variant as is, without applying any renaming strategy.
 
 Likewise, the renaming follows a priority-based fallback approach to
-determine the base string representation before applying the abbreviation:
+determine the full length string representation before applying the
+abbreviation:
 
 1. **Variant-level attribute** (_highest priority_) - uses the string
    produced by the rename strategy from the `#[variants(rename(...))]`
@@ -523,43 +538,82 @@ determine the base string representation before applying the abbreviation:
    been specified for the type;
 1. **No renaming** (_default_) - converts the variant identifier to a string
    if neither the type-level nor the variant-level rename attribute has been
-   specified."
+   specified.
+
+[`beerec-variants`]: https://docs.rs/beerec-variants
+[`Variants`]: https://docs.rs/beerec-variants/latest/beerec_variants/derive.Variants.html"
     );
 
     let iter_variants_doc = format!(
-        r"Iterates over [`{ident}`] variants.
+        r"Iterates over _iterable_ (i.e. non-skipped) [`{ident}`] variants.
 
-Enum variants marked with the `#[variants(skip)]` attribute are ignored."
+# Notes
+
+This method is generated by the [`Variants`] derive macro from the [`beerec-variants`] crate,
+enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
+
+[`beerec-variants`]: https://docs.rs/beerec-variants
+[`Variants`]: https://docs.rs/beerec-variants/latest/beerec_variants/derive.Variants.html"
     );
 
     let iter_variants_as_str_doc = format!(
-        r"Iterates over string representation of [`{ident}`] variants.
+        r"Iterates over _iterable_ (i.e. non-skipped) string representations of [`{ident}`]
+variants.
 
-Enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
+See [`{ident}::as_str`] for further details about yielded values.
 
-See [`{ident}::as_str`] for further details about yielded values."
+# Notes
+
+This method is generated by the [`Variants`] derive macro from the [`beerec-variants`] crate,
+enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
+
+[`beerec-variants`]: https://docs.rs/beerec-variants
+[`Variants`]: https://docs.rs/beerec-variants/latest/beerec_variants/derive.Variants.html"
     );
 
     let iter_variants_as_str_abbr_doc = format!(
-        r"Iterates over abbreviated string representation of [`{ident}`] variants.
+        r"Iterates over _iterable_ (i.e. non-skipped) abbreviated string representations of
+[`{ident}`] variants.
 
-Enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
+See [`{ident}::as_str_abbr`] for further details about yielded values.
 
-See [`{ident}::as_str_abbr`] for further details about yielded values."
+# Notes
+
+This method is generated by the [`Variants`] derive macro from the [`beerec-variants`] crate,
+enum variants marked with the `#[variants(skip)]` attribute are excluded from iteration.
+
+[`beerec-variants`]: https://docs.rs/beerec-variants
+[`Variants`]: https://docs.rs/beerec-variants/latest/beerec_variants/derive.Variants.html"
     );
 
     let variants_list_str_doc = format!(
         r"Returns a list of quoted (double-quotes) and comma separated string
-representations of the [`{ident}`] variants.
+representations of _iterable_ (i.e. non-skipped) [`{ident}`] variants.
 
-See [`{ident}::as_str`] for further details about the string representation."
+See [`{ident}::as_str`] for further details about the string representations.
+
+# Notes
+
+This method is generated by the [`Variants`] derive macro from the [`beerec-variants`] crate,
+enum variants marked with the `#[variants(skip)]` attribute are excluded from the listing.
+
+[`beerec-variants`]: https://docs.rs/beerec-variants
+[`Variants`]: https://docs.rs/beerec-variants/latest/beerec_variants/derive.Variants.html"
     );
 
     let variants_list_str_abbr_doc = format!(
         r"Returns a list of quoted (double-quotes) and comma separated abbreviated string
-representations of the [`{ident}`] variants.
+representations of _iterable_ (i.e. non-skipped) [`{ident}`] variants.
 
-See [`{ident}::as_str_abbr`] for further details about the abbreviated string representation."
+See [`{ident}::as_str_abbr`] for further details about the abbreviated string representations.
+
+# Notes
+
+This method is generated by the [`Variants`] derive macro from the [`beerec-variants`] crate,
+enum variants marked with the `#[variants(skip)]` attribute are excluded from the listing.
+
+[`beerec-variants`]: https://docs.rs/beerec-variants
+[`Variants`]: https://docs.rs/beerec-variants/latest/beerec_variants/derive.Variants.html"
     );
 
     let mut generated = quote::quote! {
@@ -801,7 +855,7 @@ See [`{ident}::as_str_abbr`] for further details about the abbreviated string re
 ///
 /// # String representation renaming priority
 ///
-/// When using _string representations_ of enum variants, renaming can be
+/// To produce _string representations_ of enum variants, renaming can be
 /// applied at both the type level and variant level. The string representation
 /// of each variant is obtained by applying rename strategies following a
 /// priority-based fallback approach:
@@ -818,7 +872,7 @@ See [`{ident}::as_str_abbr`] for further details about the abbreviated string re
 ///
 /// # Abbreviated string representation renaming priority
 ///
-/// When using _abbreviated string representation_ of the enum variants,
+/// To produce _abbreviated string representations_ of the enum variants,
 /// renaming can be applied at both the type level and the variant level. The
 /// abbreviated string representation of each variant is obtained by applying
 /// rename strategies following a priority-based fallback approach:
@@ -830,12 +884,13 @@ See [`{ident}::as_str_abbr`] for further details about the abbreviated string re
 /// 1. **Type-level attribute** (_fallback_) - uses the string produced by the
 ///    rename strategy from the `#[variants(rename(...))]` attribute, if one has
 ///    been specified for the type;
-/// 1. **No renaming** (_default_) - converts the variant identifier to an
-///    abbreviated string if neither the type-level nor the variant-level rename
-///    attribute has been specified.
+/// 1. **No renaming** (_default_) - abbreviates the full length string
+///    representation of the variant as is, without applying any renaming
+///    strategy.
 ///
 /// Likewise, the renaming follows a priority-based fallback approach to
-/// determine the base string representation before applying the abbreviation:
+/// determine the full length string representation before applying the
+/// abbreviation:
 ///
 /// 1. **Variant-level attribute** (_highest priority_) - uses the string
 ///    produced by the rename strategy from the `#[variants(rename(...))]`
