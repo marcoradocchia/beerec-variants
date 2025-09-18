@@ -246,7 +246,6 @@ impl TargetVariant {
     ///    attribute, if one has been specified for the type;
     /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
     ///    string if the inner rename attribute hasn't been specified.
-    #[rustfmt::skip]
     fn inner_rename_abbr(&self) -> Option<Cow<'_, str>> {
         self.rename_abbr.as_ref().map(|rename_abbr| match rename_abbr {
             InnerRenameStrategy::Literal(literal) => Cow::Borrowed(literal.as_str()),
@@ -391,6 +390,22 @@ impl TargetVariant {
     }
 }
 
+/// Enum variant's [`FromStr`] related implementation.
+impl TargetVariant {
+    // TODO
+    fn from_str_match_branch(
+        &self,
+        outer_rename: Option<OuterRenameStrategy>,
+        outer_rename_abbr: Option<OuterRenameStrategy>,
+    ) -> TokenStream2 {
+        let Self { ident, .. } = self;
+        let name = self.as_str(outer_rename);
+        let name_abbr = self.as_str_abbr(outer_rename, outer_rename_abbr);
+
+        quote::quote! { #name | #name_abbr => Self::#ident }
+    }
+}
+
 /// The type representing the `enum` type the macro is being derived on.
 ///
 /// This type is constructed while the input [`TokenStream`] is being parsed,
@@ -423,6 +438,11 @@ struct TargetEnum {
     /// This field represents the `#[variants(display)]` outer attribute.
     #[darling(default)]
     display: bool,
+    /// Wether to implement the [`FromStr`] trait for the `enum` type.
+    ///
+    /// This field represents the `#[variants(from_str)]`outer attribute.
+    #[darling(default)]
+    from_str: bool,
 }
 
 /// The actual derive macro implementation.
@@ -475,6 +495,10 @@ fn derive_enum_variants_impl(input: &DeriveInput) -> syn::Result<TokenStream2> {
         Cow::Borrowed(", "),
     )
     .collect::<String>();
+
+    let variant_from_str_match_branches = variants.iter().map(|variant| {
+        variant.from_str_match_branch(target_enum.rename, target_enum.rename_abbr)
+    });
 
     let ident = &target_enum.ident;
 
@@ -690,6 +714,39 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
         };
 
         generated.extend(generated_display_impl);
+    }
+
+    if target_enum.from_str {
+        let parse_error_ident = format!("Parse{ident}Error");
+
+        let generated_from_str_impl = quote::quote! {
+            #[derive(Debug)]
+            pub struct #parse_error_ident;
+
+            impl ::std::fmt::Display for #parse_error_ident {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    f.write_str("Expected one of ")?;
+                    f.write_str(#ident::variants_list_str())?;
+
+                    Ok(())
+                }
+            }
+
+            impl ::std::error::Error for #parse_error_ident {}
+
+            impl ::std::str::FromStr for #ident {
+                type Err = #parse_error_ident;
+
+                fn from(value: &str) -> Result<Self, Self::Err> {
+                    match value {
+                        #(#variant_from_str_match_branches,)*
+                        _ => Err(#parse_error_ident),
+                    }
+                }
+            }
+        };
+
+        generated.extend(generated_from_str_impl);
     }
 
     Ok(generated)
