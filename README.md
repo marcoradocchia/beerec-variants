@@ -367,3 +367,4 @@ assert_eq!(Err(ParseWeekdayError), FromStr::<Weekday>::from_str("invalid"));
 [`Clone`]: https://doc.rust-lang.org/std/clone/trait.Clone.html
 [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
 [`Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
+[`FromStr`]: https://doc.rust-lang.org/std/str/trait.FromStr.html
