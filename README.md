@@ -38,9 +38,11 @@ be applied to the `enum` type the macro is being derived on):
 - `rename` - customizes the string representation of each variant;
 - `rename_abbr` - customizes the abbreviated string representation of each
   variant;
-- `display` - automatically implements the [`Display`] trait for the target
-  enum using the string representation provided by the generated `as_str`
-  method.
+- `display` - generates a [`Display`] trait implementation based on the
+  string representation provided by the generated `as_str` method;
+- `from_str` - generates a [`FromStr`] trait implementation based on the
+  string or abbreviated string representation provided by the generated
+  `as_str` and `as_str_abbr` methods respectively.
 
 Valid `rename` and `rename_abbr` customization strategies are:
 
@@ -107,6 +109,29 @@ assert_eq!(String::from("Spring"), format!("{}", Season::Spring));
 assert_eq!(String::from("Summer"), format!("{}", Season::Summer));
 assert_eq!(String::from("Autumn"), format!("{}", Season::Autumn));
 assert_eq!(String::from("Winter"), format!("{}", Season::Winter));
+```
+
+```rust
+#[derive(Variants)]
+#[variants(from_str)]
+enum Priority {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+assert_eq!(Ok(Priority::Low), FromStr::<Priority>::from_str("Low"));
+assert_eq!(Ok(Priority::Medium), FromStr::<Priority>::from_str("Medium"));
+assert_eq!(Ok(Priority::High), FromStr::<Priority>::from_str("High"));
+assert_eq!(Ok(Priority::Critical), FromStr::<Priority>::from_str("Critical"));
+
+assert_eq!(Ok(Priority::Low), FromStr::<Priority>::from_str("Low"));
+assert_eq!(Ok(Priority::Medium), FromStr::<Priority>::from_str("Med"));
+assert_eq!(Ok(Priority::High), FromStr::<Priority>::from_str("Hig"));
+assert_eq!(Ok(Priority::Critical), FromStr::<Priority>::from_str("Cri"));
+
+assert_eq!(Err(ParsePriorityError), FromStr::<Priority>::from_str("invalid"));
 ```
 
 # Variant level attributes
@@ -232,7 +257,7 @@ compilation error.
 
 ```rust
 #[derive(Variants, Debug, PartialEq, Eq)]
-#[variants(display)]
+#[variants(display, from_str)]
 enum Weekday {
     #[variants(skip)]
     Monday,
@@ -251,11 +276,37 @@ enum Weekday {
 assert_eq!(6, Weekday::iter_variants().count());
 
 assert_eq!("Monday", Weekday::Monday.as_str());
-assert_eq!("Mon", Weekday::Monday.as_str_abbr());
+assert_eq!("DayAfterMonday", Weekday::Tuesday.as_str());
+assert_eq!("Wednesday", Weekday::Wednesday.as_str());
+assert_eq!("Giovedì", Weekday::Thursday.as_str());
+assert_eq!("Friday", Weekday::Friday.as_str());
+assert_eq!("Saturday", Weekday::Saturday.as_str());
+assert_eq!("Sunday", Weekday::Sunday.as_str());
+
+assert_eq!("Mon", Weekday::Monday.as_str());
+assert_eq!("tue", Weekday::Tuesday.as_str());
+assert_eq!("wed", Weekday::Wednesday.as_str());
+assert_eq!("gio", Weekday::Thursday.as_str());
+assert_eq!("Fri", Weekday::Friday.as_str());
+assert_eq!("Sat", Weekday::Saturday.as_str());
+assert_eq!("Sun", Weekday::Sunday.as_str());
 
 // The enum has been marked as `display`, so `std::fmt::Display` implementation is available.
 assert_eq!(String::from("Monday"), Weekday::Monday.to_string());
+assert_eq!(String::from("DayAfterMonday"), Weekday::Tuesday.to_string());
+assert_eq!(String::from("Wednesday"), Weekday::Wednesday.to_string());
+assert_eq!(String::from("Giovedì"), Weekday::Thursday.to_string());
+assert_eq!(String::from("Friday"), Weekday::Friday.to_string());
+assert_eq!(String::from("Saturday"), Weekday::Saturday.to_string());
+assert_eq!(String::from("Sunday"), Weekday::Sunday.to_string());
+
 assert_eq!(String::from("Monday"), format!("{}", Weekday::Monday));
+assert_eq!(String::from("DayAfterMonday"), format!("{}", Weekday::Tuesday));
+assert_eq!(String::from("Wednesday"), format!("{}", Weekday::Wednesday));
+assert_eq!(String::from("Giovedì"), format!("{}", Weekday::Thursday));
+assert_eq!(String::from("Friday"), format!("{}", Weekday::Friday));
+assert_eq!(String::from("Saturday"), format!("{}", Weekday::Saturday));
+assert_eq!(String::from("Sunday"), format!("{}", Weekday::Sunday));
 
 let mut weekdays = Weekday::iter_variants();
 assert_eq!(Some(Weekday::Tuesday), weekdays.next());
@@ -274,7 +325,6 @@ assert_eq!(Some("Friday"), weekdays_as_str.next());
 assert_eq!(Some("Saturday"), weekdays_as_str.next());
 assert_eq!(Some("Sunday"), weekdays_as_str.next());
 assert_eq!(None, weekdays.next());
-
 let mut weekdays_as_str_abbr = Weekday::iter_variants_as_str_abbr();
 assert_eq!(Some("tue"), weekdays_as_str_abbr.next());
 assert_eq!(Some("wed"), weekdays_as_str_abbr.next());
@@ -293,6 +343,25 @@ assert_eq!(
     "\"tue\", \"wed\", \"gio\", \"Fri\", \"Sat\", \"Sun\"",
     Weekday::variants_list_str_abbr(),
 );
+
+// The enum has been marked as `from_str`, so `std::str::FromStr` implementation is available.
+assert_eq!(Ok(Weekday::Monday), FromStr::<Weekday>::from_str("Monday"));
+assert_eq!(Ok(Weekday::Tuesday), FromStr::<Weekday>::from_str("DayAfterMonday"));
+assert_eq!(Ok(Weekday::Wednesday), FromStr::<Weekday>::from_str("Wednesday"));
+assert_eq!(Ok(Weekday::Thursday), FromStr::<Weekday>::from_str("Giovedì"));
+assert_eq!(Ok(Weekday::Friday), FromStr::<Weekday>::from_str("Friday"));
+assert_eq!(Ok(Weekday::Saturday), FromStr::<Weekday>::from_str("Saturday"));
+assert_eq!(Ok(Weekday::Sunday), FromStr::<Weekday>::from_str("Sunday"));
+
+assert_eq!(Ok(Weekday::Monday), FromStr::<Weekday>::from_str("Mon"));
+assert_eq!(Ok(Weekday::Tuesday), FromStr::<Weekday>::from_str("tue"));
+assert_eq!(Ok(Weekday::Wednesday), FromStr::<Weekday>::from_str("wed"));
+assert_eq!(Ok(Weekday::Thursday), FromStr::<Weekday>::from_str("gio"));
+assert_eq!(Ok(Weekday::Friday), FromStr::<Weekday>::from_str("Fri"));
+assert_eq!(Ok(Weekday::Saturday), FromStr::<Weekday>::from_str("Sat"));
+assert_eq!(Ok(Weekday::Sunday), FromStr::<Weekday>::from_str("Sun"));
+
+assert_eq!(Err(ParseWeekdayError), FromStr::<Weekday>::from_str("invalid"));
 ```
 
 [`Clone`]: https://doc.rust-lang.org/std/clone/trait.Clone.html

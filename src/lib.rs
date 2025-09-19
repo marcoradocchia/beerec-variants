@@ -1,449 +1,15 @@
 mod ident;
 mod nested_meta;
+mod rename;
 mod string;
+mod target;
 
-use std::borrow::Cow;
-
-use darling::ast::{Data, NestedMeta};
-use darling::{FromDeriveInput, FromMeta, FromVariant};
-use itertools::Itertools;
+use darling::FromDeriveInput;
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
-use syn::{DeriveInput, Ident, Lit, Meta};
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
+use syn::DeriveInput;
 
-use self::ident::IdentExt;
-use self::nested_meta::NestedMetaSliceExt;
-use self::string::StringExt;
-
-/// Rename strategy to be used as an outer attribute of the [`TargetEnum`].
-#[derive(Debug, Clone, Copy)]
-enum OuterRenameStrategy {
-    /// Converts variant string representation to uppercase.
-    Uppercase,
-    /// Converts variant string representation to lowercase.
-    Lowercase,
-}
-
-impl OuterRenameStrategy {
-    /// The list of valid [`Meta::Path`]s for the [`OuterRenameStrategy`]
-    /// attribute.
-    const VALID_PATHS: &'static [&'static str] = &["uppercase", "lowercase"];
-}
-
-impl FromMeta for OuterRenameStrategy {
-    #[rustfmt::skip]
-    fn from_list(items: &[NestedMeta]) -> darling::Result<Self> {
-        let nested_meta = items.get_one_exactly()?;
-
-        match nested_meta {
-            NestedMeta::Meta(Meta::Path(path)) if path.is_ident("uppercase") => Ok(Self::Uppercase),
-            NestedMeta::Meta(Meta::Path(path)) if path.is_ident("lowercase") => Ok(Self::Lowercase),
-            NestedMeta::Meta(Meta::Path(path)) => Err(darling::Error::unknown_field_path_with_alts(path, Self::VALID_PATHS)),
-            _ => Err(darling::Error::unsupported_format("non-path")),
-        }
-    }
-}
-
-/// Rename strategy to be used as an inner attribute of the [`TargetVariant`]s.
-#[derive(Debug, Clone)]
-enum InnerRenameStrategy {
-    /// Replaces variant string representation with given string literal.
-    Literal(String),
-    /// Converts variant string representation to uppercase.
-    Uppercase,
-    /// Converts variant string representation to lowercase.
-    Lowercase,
-}
-
-impl InnerRenameStrategy {
-    /// The list of valid [`Meta::Path`]s for the [`InnerRenameStrategy`]
-    /// attribute.
-    const VALID_PATHS: &'static [&'static str] = &["uppercase", "lowercase", "..."];
-}
-
-impl FromMeta for InnerRenameStrategy {
-    fn from_string(value: &str) -> darling::Result<Self> {
-        Ok(Self::Literal(value.to_string()))
-    }
-
-    #[rustfmt::skip]
-    fn from_list(items: &[NestedMeta]) -> darling::Result<Self> {
-        let nested_meta = items.get_one_exactly()?;
-
-        match nested_meta {
-            NestedMeta::Meta(meta) => match meta {
-                Meta::Path(path) if path.is_ident("uppercase") => Ok(Self::Uppercase),
-                Meta::Path(path) if path.is_ident("lowercase") => Ok(Self::Lowercase),
-                Meta::Path(path) => Err(darling::Error::unknown_field_path_with_alts(path, Self::VALID_PATHS)),
-                _ => Err(darling::Error::unsupported_format("non-path")),
-            },
-            NestedMeta::Lit(literal) => match literal {
-                Lit::Str(lit) => Ok(Self::Literal(lit.value())),
-                lit => Err(darling::Error::unexpected_lit_type(lit)),
-            },
-        }
-    }
-}
-
-/// The type representing a [`TargetEnum`] variant.
-///
-/// This type is constructed while [`TargetEnum`] variants are being parsed,
-/// and it's populated with information about the variant identifier and its
-/// inner attributes.
-#[derive(Debug, Clone, FromVariant)]
-#[darling(attributes(variants))]
-struct TargetVariant {
-    /// The identifier of the [`TargetEnum`] variant.
-    ident: Ident,
-    /// The rename strategy for the variant's string representation.
-    ///
-    /// This field is populated by the `#[variants(rename(...))]` inner
-    /// attribute of the variant.
-    #[darling(default)]
-    rename: Option<InnerRenameStrategy>,
-    /// The rename strategy for the variant's abbreviated string representation.
-    ///
-    /// This field is populated by the `#[variants(rename_abbr(...))]` inner
-    /// attribute of the variant.
-    #[darling(default)]
-    rename_abbr: Option<InnerRenameStrategy>,
-    /// Whether to skip the variant during iteration.
-    ///
-    /// This applies to `iter_variants`, `iter_variants_as_str` and
-    /// `iter_variants_as_str_abbr` generated methods.
-    #[darling(default)]
-    skip: bool,
-}
-
-/// Enum variant's string representation implementation.
-impl TargetVariant {
-    /// Returns the variant identifier, if it's not been marked as `skip`.
-    ///
-    /// This method provides conditional access to the identifier of the
-    /// variant: returns `Some` if the variant should not be skipped,
-    /// `None` otherwise.
-    fn ident(&self) -> Option<&Ident> {
-        (!self.skip).then_some(&self.ident)
-    }
-
-    /// Returns a string representation based on the `#[variants(rename(...))]`
-    /// inner attribute strategy, if one has been specified for the variant.
-    ///
-    /// This method provides conditional access to the custom string
-    /// representation of the variant: returns `Some` if the inner attribute has
-    /// been specified for the variant, `None` otherwise.
-    fn inner_rename(&self) -> Option<Cow<'_, str>> {
-        self.rename.as_ref().map(|rename| match rename {
-            InnerRenameStrategy::Literal(literal) => Cow::Borrowed(literal.as_str()),
-            InnerRenameStrategy::Uppercase => Cow::Owned(self.ident.to_uppercase_string()),
-            InnerRenameStrategy::Lowercase => Cow::Owned(self.ident.to_lowercase_string()),
-        })
-    }
-
-    /// Returns a string representation based on the `#[variants(rename(...))]`
-    /// outer attribute strategy (`outer_rename`), if one has been specified for
-    /// the type, falling back to the variant ident's stringification otherwise.
-    fn outer_rename(&self, outer_rename: Option<OuterRenameStrategy>) -> String {
-        match outer_rename {
-            Some(OuterRenameStrategy::Uppercase) => self.ident.to_uppercase_string(),
-            Some(OuterRenameStrategy::Lowercase) => self.ident.to_lowercase_string(),
-            None => self.ident.to_string(),
-        }
-    }
-
-    /// Returns the final string representation of the variant.
-    //
-    /// This method applies rename strategies following a priority-based
-    /// fallback approach:
-    ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
-    ///    produced by the rename strategy from the `#[variants(rename(...))]`
-    ///    inner attribute, if one has been specified for the variant;
-    /// 1. [`OuterRenameStrategy`] (_fallback_) - uses the string produced by
-    ///    the rename strategy from the `#[variants(rename(...))]` outer
-    ///    attribute, if one has been specified for the type;
-    /// 1. **No renaming** (_default_) - converts the variant identifier to a
-    ///    string if neither the inner nor the outer rename attribute has been
-    ///    specified.
-    fn as_str(&self, outer_rename: Option<OuterRenameStrategy>) -> Cow<'_, str> {
-        self.inner_rename().unwrap_or_else(|| {
-            let outer_rename = self.outer_rename(outer_rename);
-            Cow::Owned(outer_rename)
-        })
-    }
-
-    /// Retuns a "_match branch_", associating the variant to the final string
-    /// representation, to be used in the generation of the `as_str` method.
-    fn as_str_match_branch(&self, outer_rename: Option<OuterRenameStrategy>) -> TokenStream2 {
-        let Self { ident, .. } = self;
-        let name = self.as_str(outer_rename);
-
-        quote::quote! { Self::#ident => #name }
-    }
-
-    /// Returns a quoted (double-quotes) version of the final string
-    /// representation of the variant.
-    ///
-    /// For further details about the final string representation (i.e. rename
-    /// strategies, etc.) see [`TargetVariant::as_str`].
-    fn as_quoted_string(&self, outer_rename: Option<OuterRenameStrategy>) -> String {
-        format!("\"{}\"", self.as_str(outer_rename))
-    }
-}
-
-/// Enum variant's abbreviated string representation implementation.
-impl TargetVariant {
-    /// Returns an abbreviated string representation by applying the
-    /// [`InnerRenameStrategy::Uppercase`] renaming strategy.
-    ///
-    /// The renaming follows a priority-based fallback approach to determine the
-    /// full length string representation before applying the abbreviation:
-    ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
-    ///    produced by the rename strategy from the `#[variants(rename(...))]`
-    ///    inner attribute, if one has been specified for the variant;
-    /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
-    ///    string if the inner rename attribute hasn't been specified.
-    fn inner_rename_abbr_uppercase(&self) -> String {
-        self.inner_rename()
-            .map(|name| name.into_owned().to_uppercase_in_place().to_abbr_in_place())
-            .unwrap_or_else(|| self.ident.to_uppercase_string_abbr())
-    }
-
-    /// Returns an abbreviated string representation by applying the
-    /// [`InnerRenameStrategy::Lowercase`] renaming strategy.
-    ///
-    /// The renaming follows a priority-based fallback approach to determine the
-    /// full length string representation before applying the abbreviation:
-    ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
-    ///    produced by the rename strategy from the `#[variants(rename(...))]`
-    ///    inner attribute, if one has been specified for the variant;
-    /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
-    ///    string if the inner rename attribute hasn't been specified.
-    fn inner_rename_abbr_lowercase(&self) -> String {
-        self.inner_rename()
-            .map(|name| name.into_owned().to_lowercase_in_place().to_abbr_in_place())
-            .unwrap_or_else(|| self.ident.to_lowercase_string_abbr())
-    }
-
-    /// Returns an abbreviated string representation based on the
-    /// `#[variants(rename_abbr(...))]` inner attribute strategy, if one has been
-    /// specified for the variant.
-    ///
-    /// This method provides conditional access to the custom abbreviated string
-    /// representation of the variant: returns `Some` if the inner attribute has
-    /// been specified for the variant, `None` otherwise.
-    ///
-    /// For the cases where the `#[variants(rename_abbr(...))]` inner attribute
-    /// strategy is either [`InnerRenameStrategy::Uppercase`] or
-    /// [`InnerRenameStrategy::Lowercase`], renaming follows a priority-based
-    /// fallback approach to determine the full length string representation before
-    /// applying the abbreviation:
-    ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string produced
-    ///    by the rename strategy from the `#[variants(rename(...))]` inner
-    ///    attribute, if one has been specified for the type;
-    /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
-    ///    string if the inner rename attribute hasn't been specified.
-    fn inner_rename_abbr(&self) -> Option<Cow<'_, str>> {
-        self.rename_abbr.as_ref().map(|rename_abbr| match rename_abbr {
-            InnerRenameStrategy::Literal(literal) => Cow::Borrowed(literal.as_str()),
-            InnerRenameStrategy::Uppercase => Cow::Owned(self.inner_rename_abbr_uppercase()),
-            InnerRenameStrategy::Lowercase => Cow::Owned(self.inner_rename_abbr_lowercase()),
-        })
-    }
-
-    /// Returns an abbreviated string representation by applying the
-    /// [`OuterRenameStrategy::Uppercase`] renaming strategy.
-    ///
-    /// The renaming follows a priority-based fallback approach to determine the
-    /// full length string representation before applying the abbreviation:
-    ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
-    ///    produced by the rename strategy from the `#[variants(rename(...))]`
-    ///    inner attribute, if one has been specified for the variant;
-    /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
-    ///    string if the inner rename attribute hasn't been specified.
-    fn outer_rename_abbr_uppercase(&self) -> String {
-        self.inner_rename()
-            .map(|name| name.into_owned().to_uppercase_in_place().to_abbr_in_place())
-            .unwrap_or_else(|| self.ident.to_uppercase_string_abbr())
-    }
-
-    /// Returns an abbreviated string representation applying the
-    /// [`OuterRenameStrategy::Lowercase`] renaming strategy.
-    ///
-    /// The renaming follows a priority-based fallback approach to determine the
-    /// full length string representation before applying the abbreviation:
-    ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
-    ///    produced by the rename strategy from the `#[variants(rename(...))]`
-    ///    inner attribute, if one has been specified for the variant;
-    /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
-    ///    string if the inner rename attribute hasn't been specified.
-    fn outer_rename_abbr_lowercase(&self) -> String {
-        self.inner_rename()
-            .map(|name| name.into_owned().to_lowercase_in_place().to_abbr_in_place())
-            .unwrap_or_else(|| self.ident.to_lowercase_string_abbr())
-    }
-
-    /// Returns an abbreviated string representation based on the
-    /// `#[variants(rename_abbr(...))]` outer attribute strategy
-    /// (`outer_rename_abbr`), if one has been specified for the type, falling
-    /// back to abbreviating the full length final string representation of the
-    /// variant as is (see [`TargetVariant::as_str`] documentation for further
-    /// details).
-    ///
-    /// The renaming follows a priority-based fallback approach to determine the
-    /// full length string representation before applying the abbreviation:
-    ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string produced
-    ///    by the rename strategy from the `#[variants(rename(...))]` inner
-    ///    attribute, if one has been specified for the variant;
-    /// 1. [`OuterRenameStrategy`] (_fallback_) - uses the string produced by the
-    ///    rename strategy from the `#[variants(rename(...))]` outer attribute, if
-    ///    one has been specified for the type;
-    /// 1. **No renaming** (_default_) - converts the variant identifier to a string
-    ///    if the outer rename attribute is not specified.
-    #[rustfmt::skip]
-    fn outer_rename_abbr(
-        &self,
-        outer_rename: Option<OuterRenameStrategy>,
-        outer_rename_abbr: Option<OuterRenameStrategy>,
-    ) -> String {
-        match outer_rename_abbr {
-            Some(OuterRenameStrategy::Uppercase) => self.outer_rename_abbr_uppercase(),
-            Some(OuterRenameStrategy::Lowercase) => self.outer_rename_abbr_lowercase(),
-            None => self.as_str(outer_rename).into_owned().to_abbr_in_place(),
-        }
-    }
-
-    /// Returns the final abbreviated string representation of the variant.
-    ///
-    /// This method applies rename strategies for the abbreviated string
-    /// representation of the variant, following a priority-based fallback
-    /// approach:
-    ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the abbreviated
-    ///    string produced by the rename strategy from the
-    ///    `#[variants(rename_abbr(...))]` inner attribute, if one has been
-    ///    specified for the variant;
-    /// 1. [`OuterRenameStrategy`] (_fallback_) - uses the abbreviated string
-    ///    produced by the rename strategy from the
-    ///    `#[variants(rename_abbr(...))]` outer attribute, if one has been
-    ///    specified for the type;
-    /// 1. **No renaming** (_default_) - abbreviates the full length string
-    ///    representation of the variant as is, without applyaing any renaming
-    ///    strategy (see [`TargetVariant::as_str`]).
-    ///
-    /// Likewise, the renaming follows a priority-based fallback approach to
-    /// determine the full length string representation before applying the
-    /// abbreviation:
-    ///
-    /// 1. [`InnerRenameStrategy`] (_highest priority_) - uses the string
-    ///    produced by the rename strategy from the `#[variants(rename(...))]`
-    ///    inner attribute, if one has been specified for the variant;
-    /// 1. [`OuterRenameStrategy`] (_fallback_) - uses the string produced by
-    ///    the rename strategy from the `#[variants(rename(...))]` outer
-    ///    attribute, if one has been specified for the type;
-    /// 1. **No renaming** (_default_) - converts the variant identifier to a
-    ///    string if neither the inner nor the outer rename attribute has been
-    ///    specified.
-    fn as_str_abbr(
-        &self,
-        outer_rename: Option<OuterRenameStrategy>,
-        outer_rename_abbr: Option<OuterRenameStrategy>,
-    ) -> Cow<'_, str> {
-        self.inner_rename_abbr().unwrap_or_else(|| {
-            let outer_rename_abbr = self.outer_rename_abbr(outer_rename, outer_rename_abbr);
-            Cow::Owned(outer_rename_abbr)
-        })
-    }
-
-    /// Retuns a "_match branch_", associating the variant to the final abbreviated
-    /// string representation, to be used in the generation of the `as_str_abbr`
-    /// method.
-    #[rustfmt::skip]
-    fn as_str_abbr_match_branch(
-        &self,
-        outer_rename: Option<OuterRenameStrategy>,
-        outer_rename_abbr: Option<OuterRenameStrategy>,
-    ) -> TokenStream2 {
-        let Self { ident, .. } = self;
-        let name_abbr = self.as_str_abbr(outer_rename, outer_rename_abbr);
-
-        quote::quote! { Self::#ident => #name_abbr }
-    }
-
-    /// Returns a quoted (double-quotes) version of the final abbreviated string
-    /// representation of the variant.
-    ///
-    /// For further details about the final abbreviated string representation
-    /// (i.e. rename strategies, etc.) see [`TargetVariant::as_str_abbr`].
-    fn as_quoted_string_abbr(
-        &self,
-        outer_rename: Option<OuterRenameStrategy>,
-        outer_rename_abbr: Option<OuterRenameStrategy>,
-    ) -> String {
-        format!("\"{}\"", self.as_str_abbr(outer_rename, outer_rename_abbr))
-    }
-}
-
-/// Enum variant's [`FromStr`] related implementation.
-impl TargetVariant {
-    // TODO
-    fn from_str_match_branch(
-        &self,
-        outer_rename: Option<OuterRenameStrategy>,
-        outer_rename_abbr: Option<OuterRenameStrategy>,
-    ) -> TokenStream2 {
-        let Self { ident, .. } = self;
-        let name = self.as_str(outer_rename);
-        let name_abbr = self.as_str_abbr(outer_rename, outer_rename_abbr);
-
-        quote::quote! { #name | #name_abbr => Self::#ident }
-    }
-}
-
-/// The type representing the `enum` type the macro is being derived on.
-///
-/// This type is constructed while the input [`TokenStream`] is being parsed,
-/// and is populated with information about the `enum` identifier and its
-/// variants's and outer attributes.
-#[derive(Debug, Clone, FromDeriveInput)]
-#[darling(supports(enum_unit), attributes(variants))]
-struct TargetEnum {
-    /// The identifier of the `enum` type the macro is being derived on.
-    ident: Ident,
-    /// The body of the `enum` type the macro is being derived on.
-    ///
-    /// This field represents the `enum`'s variants and allows iteration over
-    /// them and their (abbreviated) string representations.
-    data: Data<TargetVariant, ()>,
-    /// The rename strategy for the `enum` variants' string representation.
-    ///
-    /// This field represents the `#[variants(rename(...))]` outer attribute.
-    #[darling(default)]
-    rename: Option<OuterRenameStrategy>,
-    /// The rename strategy for the `enum` variants' abbreviated string
-    /// representation.
-    ///
-    /// This field represents the `#[variants(rename_abbr(...))]` outer
-    /// attribute.
-    #[darling(default)]
-    rename_abbr: Option<OuterRenameStrategy>,
-    /// Whether to implement the [`Display`] trait for the `enum` type.
-    ///
-    /// This field represents the `#[variants(display)]` outer attribute.
-    #[darling(default)]
-    display: bool,
-    /// Wether to implement the [`FromStr`] trait for the `enum` type.
-    ///
-    /// This field represents the `#[variants(from_str)]`outer attribute.
-    #[darling(default)]
-    from_str: bool,
-}
+use self::target::r#enum::TargetEnum;
 
 /// The actual derive macro implementation.
 ///
@@ -460,58 +26,27 @@ struct TargetEnum {
 fn derive_enum_variants_impl(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let target_enum = TargetEnum::from_derive_input(input)?;
 
-    let variants = match target_enum.data {
-        Data::Enum(ref variants) => variants,
-        Data::Struct(_) => unreachable!(),
-    };
+    let enum_ident = target_enum.ident();
 
-    let variant_count = variants.iter().filter(|variant| !variant.skip).count();
-    let variant_idents = variants.iter().filter_map(TargetVariant::ident);
+    let variants_count = target_enum.variants_count();
+    let variants_idents = target_enum.iter_variant_idents();
 
-    let variant_as_str_match_branches = variants.iter().map(|variant| {
-        variant.as_str_match_branch(target_enum.rename)
-    });
+    let variants_as_str_match_branches = target_enum.iter_variant_as_str_match_branches();
+    let variants_as_str_abbr_match_branches = target_enum.iter_variant_as_str_abbr_match_branches();
 
-    let variant_as_str_abbr_match_branches = variants.iter().map(|variant| {
-        variant.as_str_abbr_match_branch(target_enum.rename, target_enum.rename_abbr)
-    });
-
-    let variants_list_str_iter = variants.iter().filter(|variant| !variant.skip).map(|variant| {
-        Cow::Owned(variant.as_quoted_string(target_enum.rename))
-    });
-
-    let variants_list_str = Itertools::intersperse(
-        variants_list_str_iter,
-        Cow::Borrowed(", "),
-    )
-    .collect::<String>();
-    
-    let variants_list_str_abbr_iter = variants.iter().filter(|variant| !variant.skip).map(|variant| {
-        Cow::Owned(variant.as_quoted_string_abbr(target_enum.rename, target_enum.rename_abbr))
-    });
-
-    let variants_list_str_abbr = Itertools::intersperse(
-        variants_list_str_abbr_iter,
-        Cow::Borrowed(", "),
-    )
-    .collect::<String>();
-
-    let variant_from_str_match_branches = variants.iter().map(|variant| {
-        variant.from_str_match_branch(target_enum.rename, target_enum.rename_abbr)
-    });
-
-    let ident = &target_enum.ident;
+    let variants_list_string = target_enum.variants_list_string();
+    let variants_list_string_abbr = target_enum.variants_list_string_abbr();
 
     let iterable_variants_doc = format!(
-        "The array of _iterable_ (i.e. non-skipped) [`{ident}`] variants."
+        "The array of _iterable_ (i.e. non-skipped) [`{enum_ident}`] variants."
     );
 
     let iterable_variants_count_doc = format!(
-        "The number of _iterable_ (i.e. non-skipped) [`{ident}`] variants."
+        "The number of _iterable_ (i.e. non-skipped) [`{enum_ident}`] variants."
     );
 
     let as_str_doc = format!(
-        r"Returns a string representation of the [`{ident}`] variant.
+        r"Returns a string representation of the [`{enum_ident}`] variant.
 
 # Notes
 
@@ -533,7 +68,7 @@ crate, it applies rename strategies following a priority-based fallback approach
     );
 
     let as_str_abbr_doc = format!(
-        r"Returns an abbreviated string representation of the [`{ident}`] variant.
+        r"Returns an abbreviated string representation of the [`{enum_ident}`] variant.
 
 # Notes
 
@@ -569,7 +104,7 @@ abbreviation:
     );
 
     let iter_variants_doc = format!(
-        r"Iterates over _iterable_ (i.e. non-skipped) [`{ident}`] variants.
+        r"Iterates over _iterable_ (i.e. non-skipped) [`{enum_ident}`] variants.
 
 # Notes
 
@@ -581,10 +116,10 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from it
     );
 
     let iter_variants_as_str_doc = format!(
-        r"Iterates over _iterable_ (i.e. non-skipped) string representations of [`{ident}`]
+        r"Iterates over _iterable_ (i.e. non-skipped) string representations of [`{enum_ident}`]
 variants.
 
-See [`{ident}::as_str`] for further details about yielded values.
+See [`{enum_ident}::as_str`] for further details about yielded values.
 
 # Notes
 
@@ -597,9 +132,9 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from it
 
     let iter_variants_as_str_abbr_doc = format!(
         r"Iterates over _iterable_ (i.e. non-skipped) abbreviated string representations of
-[`{ident}`] variants.
+[`{enum_ident}`] variants.
 
-See [`{ident}::as_str_abbr`] for further details about yielded values.
+See [`{enum_ident}::as_str_abbr`] for further details about yielded values.
 
 # Notes
 
@@ -612,9 +147,9 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from it
 
     let variants_list_str_doc = format!(
         r"Returns a list of quoted (double-quotes) and comma separated string
-representations of _iterable_ (i.e. non-skipped) [`{ident}`] variants.
+representations of _iterable_ (i.e. non-skipped) [`{enum_ident}`] variants.
 
-See [`{ident}::as_str`] for further details about the string representations.
+See [`{enum_ident}::as_str`] for further details about the string representations.
 
 # Notes
 
@@ -627,9 +162,9 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 
     let variants_list_str_abbr_doc = format!(
         r"Returns a list of quoted (double-quotes) and comma separated abbreviated string
-representations of _iterable_ (i.e. non-skipped) [`{ident}`] variants.
+representations of _iterable_ (i.e. non-skipped) [`{enum_ident}`] variants.
 
-See [`{ident}::as_str_abbr`] for further details about the abbreviated string representations.
+See [`{enum_ident}::as_str_abbr`] for further details about the abbreviated string representations.
 
 # Notes
 
@@ -641,30 +176,30 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
     );
 
     let mut generated = quote::quote! {
-        impl ::std::marker::Copy for #ident {}
+        impl ::std::marker::Copy for #enum_ident {}
 
-        impl ::std::clone::Clone for #ident {
+        impl ::std::clone::Clone for #enum_ident {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
         #[automatically_derived]
-        impl #ident {
+        impl #enum_ident {
             #[doc = #iterable_variants_doc]
-            const ITERABLE_VARIANTS: [Self; #variant_count] = [
-                #(Self::#variant_idents,)*
+            const ITERABLE_VARIANTS: [Self; #variants_count] = [
+                #(Self::#variants_idents,)*
             ];
 
             #[doc = #iterable_variants_count_doc]
-            const ITERABLE_VARIANTS_COUNT: usize = #variant_count;
+            const ITERABLE_VARIANTS_COUNT: usize = #variants_count;
 
             #[inline]
             #[must_use]
             #[doc = #as_str_doc]
             pub const fn as_str(self) -> &'static str {
                 match self {
-                    #(#variant_as_str_match_branches,)*
+                    #(#variants_as_str_match_branches,)*
                 }
             }
 
@@ -673,7 +208,7 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
             #[doc = #as_str_abbr_doc]
             pub const fn as_str_abbr(self) -> &'static str {
                 match self {
-                    #(#variant_as_str_abbr_match_branches,)*
+                    #(#variants_as_str_abbr_match_branches,)*
                 }
             }
 
@@ -694,21 +229,21 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 
             #[doc = #variants_list_str_doc]
             pub const fn variants_list_str() -> &'static str {
-                #variants_list_str
+                #variants_list_string
             }
 
             #[doc = #variants_list_str_abbr_doc]
             pub const fn variants_list_str_abbr() -> &'static str {
-                #variants_list_str_abbr
+                #variants_list_string_abbr
             }
         }
     };
 
-    if target_enum.display {
+    if target_enum.implement_display() {
         let generated_display_impl = quote::quote! {
-            impl ::std::fmt::Display for #ident {
+            impl ::std::fmt::Display for #enum_ident {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    f.write_str(self.as_str())
+                    ::std::fmt::Formatter::write_str(f, self)
                 }
             }
         };
@@ -716,8 +251,9 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
         generated.extend(generated_display_impl);
     }
 
-    if target_enum.from_str {
-        let parse_error_ident = format!("Parse{ident}Error");
+    if target_enum.implement_from_str() {
+        let parse_error_ident = Ident::new(&format!("Parse{enum_ident}Error"), Span::call_site());
+        let variants_from_str_match_branches = target_enum.variants_from_str_match_branches();
 
         let generated_from_str_impl = quote::quote! {
             #[derive(Debug)]
@@ -725,8 +261,8 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 
             impl ::std::fmt::Display for #parse_error_ident {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    f.write_str("Expected one of ")?;
-                    f.write_str(#ident::variants_list_str())?;
+                    ::std::fmt::Formatter::write_str(f, "Expected one of ")?;
+                    ::std::fmt::Formatter::write_str(f, #enum_ident::variants_list_str())?;
 
                     Ok(())
                 }
@@ -734,12 +270,12 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 
             impl ::std::error::Error for #parse_error_ident {}
 
-            impl ::std::str::FromStr for #ident {
+            impl ::std::str::FromStr for #enum_ident {
                 type Err = #parse_error_ident;
 
-                fn from(value: &str) -> Result<Self, Self::Err> {
+                fn from_str(value: &str) -> Result<Self, Self::Err> {
                     match value {
-                        #(#variant_from_str_match_branches,)*
+                        #(#variants_from_str_match_branches,)*
                         _ => Err(#parse_error_ident),
                     }
                 }
@@ -778,9 +314,11 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// - `rename` - customizes the string representation of each variant;
 /// - `rename_abbr` - customizes the abbreviated string representation of each
 ///   variant;
-/// - `display` - automatically implements the [`Display`] trait for the target
-///   enum using the string representation provided by the generated `as_str`
-///   method.
+/// - `display` - generates a [`Display`] trait implementation based on the
+///   string representation provided by the generated `as_str` method;
+/// - `from_str` - generates a [`FromStr`] trait implementation based on the
+///   string or abbreviated string representation provided by the generated
+///   `as_str` and `as_str_abbr` methods respectively.
 ///
 /// Valid `rename` and `rename_abbr` customization strategies are:
 ///
@@ -858,6 +396,33 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// assert_eq!(String::from("Summer"), format!("{}", Season::Summer));
 /// assert_eq!(String::from("Autumn"), format!("{}", Season::Autumn));
 /// assert_eq!(String::from("Winter"), format!("{}", Season::Winter));
+/// # }
+/// ```
+///
+/// ```rust
+/// # use beerec_variants::Variants;
+/// #
+/// #[derive(Variants)]
+/// #[variants(from_str)]
+/// enum Priority {
+///     Low,
+///     Medium,
+///     High,
+///     Critical,
+/// }
+///
+/// # fn main() {
+/// assert_eq!(Ok(Priority::Low), FromStr::<Priority>::from_str("Low"));
+/// assert_eq!(Ok(Priority::Medium), FromStr::<Priority>::from_str("Medium"));
+/// assert_eq!(Ok(Priority::High), FromStr::<Priority>::from_str("High"));
+/// assert_eq!(Ok(Priority::Critical), FromStr::<Priority>::from_str("Critical"));
+///
+/// assert_eq!(Ok(Priority::Low), FromStr::<Priority>::from_str("Low"));
+/// assert_eq!(Ok(Priority::Medium), FromStr::<Priority>::from_str("Med"));
+/// assert_eq!(Ok(Priority::High), FromStr::<Priority>::from_str("Hig"));
+/// assert_eq!(Ok(Priority::Critical), FromStr::<Priority>::from_str("Cri"));
+///
+/// assert_eq!(Err(ParsePriorityError), FromStr::<Priority>::from_str("invalid"));
 /// # }
 /// ```
 ///
@@ -990,7 +555,7 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// # use beerec_variants::Variants;
 /// #
 /// #[derive(Variants, Debug, PartialEq, Eq)]
-/// #[variants(display)]
+/// #[variants(display, from_str)]
 /// enum Weekday {
 ///     #[variants(skip)]
 ///     Monday,
@@ -1010,11 +575,37 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// assert_eq!(6, Weekday::iter_variants().count());
 ///
 /// assert_eq!("Monday", Weekday::Monday.as_str());
-/// assert_eq!("Mon", Weekday::Monday.as_str_abbr());
+/// assert_eq!("DayAfterMonday", Weekday::Tuesday.as_str());
+/// assert_eq!("Wednesday", Weekday::Wednesday.as_str());
+/// assert_eq!("Giovedì", Weekday::Thursday.as_str());
+/// assert_eq!("Friday", Weekday::Friday.as_str());
+/// assert_eq!("Saturday", Weekday::Saturday.as_str());
+/// assert_eq!("Sunday", Weekday::Sunday.as_str());
+/// 
+/// assert_eq!("Mon", Weekday::Monday.as_str());
+/// assert_eq!("tue", Weekday::Tuesday.as_str());
+/// assert_eq!("wed", Weekday::Wednesday.as_str());
+/// assert_eq!("gio", Weekday::Thursday.as_str());
+/// assert_eq!("Fri", Weekday::Friday.as_str());
+/// assert_eq!("Sat", Weekday::Saturday.as_str());
+/// assert_eq!("Sun", Weekday::Sunday.as_str());
 ///
 /// // The enum has been marked as `display`, so `std::fmt::Display` implementation is available.
 /// assert_eq!(String::from("Monday"), Weekday::Monday.to_string());
+/// assert_eq!(String::from("DayAfterMonday"), Weekday::Tuesday.to_string());
+/// assert_eq!(String::from("Wednesday"), Weekday::Wednesday.to_string());
+/// assert_eq!(String::from("Giovedì"), Weekday::Thursday.to_string());
+/// assert_eq!(String::from("Friday"), Weekday::Friday.to_string());
+/// assert_eq!(String::from("Saturday"), Weekday::Saturday.to_string());
+/// assert_eq!(String::from("Sunday"), Weekday::Sunday.to_string());
+/// 
 /// assert_eq!(String::from("Monday"), format!("{}", Weekday::Monday));
+/// assert_eq!(String::from("DayAfterMonday"), format!("{}", Weekday::Tuesday));
+/// assert_eq!(String::from("Wednesday"), format!("{}", Weekday::Wednesday));
+/// assert_eq!(String::from("Giovedì"), format!("{}", Weekday::Thursday));
+/// assert_eq!(String::from("Friday"), format!("{}", Weekday::Friday));
+/// assert_eq!(String::from("Saturday"), format!("{}", Weekday::Saturday));
+/// assert_eq!(String::from("Sunday"), format!("{}", Weekday::Sunday));
 ///
 /// let mut weekdays = Weekday::iter_variants();
 /// assert_eq!(Some(Weekday::Tuesday), weekdays.next());
@@ -1052,6 +643,25 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 ///     "\"tue\", \"wed\", \"gio\", \"Fri\", \"Sat\", \"Sun\"",
 ///     Weekday::variants_list_str_abbr(),
 /// );
+///
+/// // The enum has been marked as `from_str`, so `std::str::FromStr` implementation is available.
+/// assert_eq!(Ok(Weekday::Monday), FromStr::<Weekday>::from_str("Monday"));
+/// assert_eq!(Ok(Weekday::Tuesday), FromStr::<Weekday>::from_str("DayAfterMonday"));
+/// assert_eq!(Ok(Weekday::Wednesday), FromStr::<Weekday>::from_str("Wednesday"));
+/// assert_eq!(Ok(Weekday::Thursday), FromStr::<Weekday>::from_str("Giovedì"));
+/// assert_eq!(Ok(Weekday::Friday), FromStr::<Weekday>::from_str("Friday"));
+/// assert_eq!(Ok(Weekday::Saturday), FromStr::<Weekday>::from_str("Saturday"));
+/// assert_eq!(Ok(Weekday::Sunday), FromStr::<Weekday>::from_str("Sunday"));
+/// 
+/// assert_eq!(Ok(Weekday::Monday), FromStr::<Weekday>::from_str("Mon"));
+/// assert_eq!(Ok(Weekday::Tuesday), FromStr::<Weekday>::from_str("tue"));
+/// assert_eq!(Ok(Weekday::Wednesday), FromStr::<Weekday>::from_str("wed"));
+/// assert_eq!(Ok(Weekday::Thursday), FromStr::<Weekday>::from_str("gio"));
+/// assert_eq!(Ok(Weekday::Friday), FromStr::<Weekday>::from_str("Fri"));
+/// assert_eq!(Ok(Weekday::Saturday), FromStr::<Weekday>::from_str("Sat"));
+/// assert_eq!(Ok(Weekday::Sunday), FromStr::<Weekday>::from_str("Sun"));
+///
+/// assert_eq!(Err(ParseWeekdayError), FromStr::<Weekday>::from_str("invalid"));
 /// # }
 /// ```
 ///
