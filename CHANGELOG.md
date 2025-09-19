@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.0] - 2025-09-19
+
+### Added
+
+- Introduce `from_str` type level attribute ([`3b131c0`](https://github.com/marcoradocchia/beerec-variants/commit/3b131c0)) ([Marco Radocchia])
+
 ## [0.3.1] - 2025-09-16
 
 ### Removed
@@ -30,5 +36,6 @@ _Initial release._
 [0.2.0]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.2.0
 [0.3.0]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.3.0
 [0.3.1]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.3.1
+[0.4.0]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.4.0
 
 [Marco Radocchia]: https://github.com/marcoradocchia
