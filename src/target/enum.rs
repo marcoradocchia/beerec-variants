@@ -173,6 +173,6 @@ impl TargetEnum {
     /// [`FromStr`]: ::std::str::From
     #[rustfmt::skip]
     pub(crate) fn variants_from_str_match_branches(&self) -> impl Iterator<Item = TokenStream> {
-        self.iter_iterable_variants().map(|variant| variant.from_str_match_branch(self.rename, self.rename_abbr))
+        self.iter_variants().map(|variant| variant.from_str_match_branch(self.rename, self.rename_abbr))
     }
 }
