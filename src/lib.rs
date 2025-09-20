@@ -285,6 +285,63 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
         generated.extend(generated_from_str_impl);
     }
 
+    #[cfg(feature = "serde")]
+    if target_enum.implement_deserialize() {
+        let visitor_ident = Ident::new(&format!("{enum_ident}Visitor"), Span::call_site());
+
+        let generated_deserialize_impl = quote::quote! {
+            impl<'de> ::serde::de::Deserialize<'de> for #enum_ident {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where
+                    D: ::serde::de::Deserializer<'de>
+                {
+                    struct #visitor_ident;
+
+                    impl<'de> ::serde::de::Visitor<'de> for #visitor_ident {
+                        type Value = #enum_ident;
+
+                        fn expecting(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                            ::std::fmt::Formatter::write_str(f, "one of ")?;
+                            ::std::fmt::Formatter::write_str(f, #enum_ident::variants_list_str())?;
+
+                            Ok(())
+                        }
+
+                        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+                        where
+                            E: ::serde::de::Error,
+                        {
+                            <#enum_ident as FromStr>::from_str(value).map_err(|_| {
+                                let unexpected = ::serde::de::Unexpected::Str(value);
+                                ::serde::de::Error::invalid_value(unexpected, &self)
+                            })
+                        }
+                    }
+
+                    deserializer.deserialize_str(#visitor_ident)
+                }
+            }
+        };
+
+        generated.extend(generated_deserialize_impl);
+    }
+
+    #[cfg(feature = "serde")]
+    if target_enum.implement_serialize() {
+        let generated_serialize_impl = quote::quote! {
+            impl ::serde::ser::Serialize for #enum_ident {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: ::serde::ser::Serialize,
+                {
+                    serializer.serialize_str(self.as_str())
+                }
+            }
+        };
+
+        generated.extend(generated_serialize_impl);
+    }
+
     Ok(generated)
 }
 
@@ -585,7 +642,7 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// assert_eq!("Friday", Weekday::Friday.as_str());
 /// assert_eq!("Saturday", Weekday::Saturday.as_str());
 /// assert_eq!("Sunday", Weekday::Sunday.as_str());
-/// 
+///
 /// assert_eq!("Mon", Weekday::Monday.as_str_abbr());
 /// assert_eq!("tue", Weekday::Tuesday.as_str_abbr());
 /// assert_eq!("wed", Weekday::Wednesday.as_str_abbr());
@@ -602,7 +659,7 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// assert_eq!(String::from("Friday"), Weekday::Friday.to_string());
 /// assert_eq!(String::from("Saturday"), Weekday::Saturday.to_string());
 /// assert_eq!(String::from("Sunday"), Weekday::Sunday.to_string());
-/// 
+///
 /// assert_eq!(String::from("Monday"), format!("{}", Weekday::Monday));
 /// assert_eq!(String::from("DayAfterMonday"), format!("{}", Weekday::Tuesday));
 /// assert_eq!(String::from("Wednesday"), format!("{}", Weekday::Wednesday));
@@ -656,7 +713,7 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// assert_eq!(Ok(Weekday::Friday), <Weekday as FromStr>::from_str("Friday"));
 /// assert_eq!(Ok(Weekday::Saturday), <Weekday as FromStr>::from_str("Saturday"));
 /// assert_eq!(Ok(Weekday::Sunday), <Weekday as FromStr>::from_str("Sunday"));
-/// 
+///
 /// assert_eq!(Ok(Weekday::Monday), <Weekday as FromStr>::from_str("Mon"));
 /// assert_eq!(Ok(Weekday::Tuesday), <Weekday as FromStr>::from_str("tue"));
 /// assert_eq!(Ok(Weekday::Wednesday), <Weekday as FromStr>::from_str("wed"));

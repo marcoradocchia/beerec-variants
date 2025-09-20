@@ -57,6 +57,14 @@ pub(crate) struct TargetEnum {
     /// [`FromStr`]: ::std::str::FromStr
     #[darling(default)]
     from_str: bool,
+    /// TODO
+    #[darling(default)]
+    #[cfg(feature = "serde")]
+    deserialize: bool,
+    /// TODO
+    #[darling(default)]
+    #[cfg(feature = "serde")]
+    serialize: bool,
 }
 
 impl TargetEnum {
@@ -93,6 +101,20 @@ impl TargetEnum {
     #[inline]
     pub(crate) fn implement_from_str(&self) -> bool {
         self.from_str
+    }
+
+    /// TODO
+    #[inline]
+    #[cfg(feature = "serde")]
+    pub(crate) fn implement_deserialize(&self) -> bool {
+        self.deserialize
+    }
+
+    /// TODO
+    #[inline]
+    #[cfg(feature = "serde")]
+    pub(crate) fn implement_serialize(&self) -> bool {
+        self.serialize
     }
 
     /// Returns an iterator over each and every variant of the `enum` type the

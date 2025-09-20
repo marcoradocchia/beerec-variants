@@ -34,6 +34,9 @@ version = "1.2.0"
 [dev-dependencies.trybuild]
 version = "1.0.111"
 
+[features]
+serde = []
+
 [lints.clippy]
 enum_variant_names = "allow"
 map_unwrap_or = "allow"
