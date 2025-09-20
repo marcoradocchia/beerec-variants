@@ -243,7 +243,7 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
         let generated_display_impl = quote::quote! {
             impl ::std::fmt::Display for #enum_ident {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    ::std::fmt::Formatter::write_str(f, self)
+                    ::std::fmt::Formatter::write_str(f, self.as_str())
                 }
             }
         };
@@ -256,7 +256,7 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
         let variants_from_str_match_branches = target_enum.variants_from_str_match_branches();
 
         let generated_from_str_impl = quote::quote! {
-            #[derive(Debug)]
+            #[derive(Debug, PartialEq, Eq)]
             pub struct #parse_error_ident;
 
             impl ::std::fmt::Display for #parse_error_ident {
@@ -400,9 +400,11 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// ```
 ///
 /// ```rust
+/// # use std::str::FromStr;
+/// #
 /// # use beerec_variants::Variants;
 /// #
-/// #[derive(Variants)]
+/// #[derive(Debug, Variants, PartialEq, Eq)]
 /// #[variants(from_str)]
 /// enum Priority {
 ///     Low,
@@ -412,17 +414,17 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// }
 ///
 /// # fn main() {
-/// assert_eq!(Ok(Priority::Low), FromStr::<Priority>::from_str("Low"));
-/// assert_eq!(Ok(Priority::Medium), FromStr::<Priority>::from_str("Medium"));
-/// assert_eq!(Ok(Priority::High), FromStr::<Priority>::from_str("High"));
-/// assert_eq!(Ok(Priority::Critical), FromStr::<Priority>::from_str("Critical"));
+/// assert_eq!(Ok(Priority::Low), <Priority as FromStr>::from_str("Low"));
+/// assert_eq!(Ok(Priority::Medium), <Priority as FromStr>::from_str("Medium"));
+/// assert_eq!(Ok(Priority::High), <Priority as FromStr>::from_str("High"));
+/// assert_eq!(Ok(Priority::Critical), <Priority as FromStr>::from_str("Critical"));
 ///
-/// assert_eq!(Ok(Priority::Low), FromStr::<Priority>::from_str("Low"));
-/// assert_eq!(Ok(Priority::Medium), FromStr::<Priority>::from_str("Med"));
-/// assert_eq!(Ok(Priority::High), FromStr::<Priority>::from_str("Hig"));
-/// assert_eq!(Ok(Priority::Critical), FromStr::<Priority>::from_str("Cri"));
+/// assert_eq!(Ok(Priority::Low), <Priority as FromStr>::from_str("Low"));
+/// assert_eq!(Ok(Priority::Medium), <Priority as FromStr>::from_str("Med"));
+/// assert_eq!(Ok(Priority::High), <Priority as FromStr>::from_str("Hig"));
+/// assert_eq!(Ok(Priority::Critical), <Priority as FromStr>::from_str("Cri"));
 ///
-/// assert_eq!(Err(ParsePriorityError), FromStr::<Priority>::from_str("invalid"));
+/// assert_eq!(Err(ParsePriorityError), <Priority as FromStr>::from_str("invalid"));
 /// # }
 /// ```
 ///
@@ -552,6 +554,8 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// # Examples
 ///
 /// ```rust
+/// # use std::str::FromStr;
+/// #
 /// # use beerec_variants::Variants;
 /// #
 /// #[derive(Variants, Debug, PartialEq, Eq)]
@@ -582,13 +586,13 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// assert_eq!("Saturday", Weekday::Saturday.as_str());
 /// assert_eq!("Sunday", Weekday::Sunday.as_str());
 /// 
-/// assert_eq!("Mon", Weekday::Monday.as_str());
-/// assert_eq!("tue", Weekday::Tuesday.as_str());
-/// assert_eq!("wed", Weekday::Wednesday.as_str());
-/// assert_eq!("gio", Weekday::Thursday.as_str());
-/// assert_eq!("Fri", Weekday::Friday.as_str());
-/// assert_eq!("Sat", Weekday::Saturday.as_str());
-/// assert_eq!("Sun", Weekday::Sunday.as_str());
+/// assert_eq!("Mon", Weekday::Monday.as_str_abbr());
+/// assert_eq!("tue", Weekday::Tuesday.as_str_abbr());
+/// assert_eq!("wed", Weekday::Wednesday.as_str_abbr());
+/// assert_eq!("gio", Weekday::Thursday.as_str_abbr());
+/// assert_eq!("Fri", Weekday::Friday.as_str_abbr());
+/// assert_eq!("Sat", Weekday::Saturday.as_str_abbr());
+/// assert_eq!("Sun", Weekday::Sunday.as_str_abbr());
 ///
 /// // The enum has been marked as `display`, so `std::fmt::Display` implementation is available.
 /// assert_eq!(String::from("Monday"), Weekday::Monday.to_string());
@@ -645,23 +649,23 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// );
 ///
 /// // The enum has been marked as `from_str`, so `std::str::FromStr` implementation is available.
-/// assert_eq!(Ok(Weekday::Monday), FromStr::<Weekday>::from_str("Monday"));
-/// assert_eq!(Ok(Weekday::Tuesday), FromStr::<Weekday>::from_str("DayAfterMonday"));
-/// assert_eq!(Ok(Weekday::Wednesday), FromStr::<Weekday>::from_str("Wednesday"));
-/// assert_eq!(Ok(Weekday::Thursday), FromStr::<Weekday>::from_str("Giovedì"));
-/// assert_eq!(Ok(Weekday::Friday), FromStr::<Weekday>::from_str("Friday"));
-/// assert_eq!(Ok(Weekday::Saturday), FromStr::<Weekday>::from_str("Saturday"));
-/// assert_eq!(Ok(Weekday::Sunday), FromStr::<Weekday>::from_str("Sunday"));
+/// assert_eq!(Ok(Weekday::Monday), <Weekday as FromStr>::from_str("Monday"));
+/// assert_eq!(Ok(Weekday::Tuesday), <Weekday as FromStr>::from_str("DayAfterMonday"));
+/// assert_eq!(Ok(Weekday::Wednesday), <Weekday as FromStr>::from_str("Wednesday"));
+/// assert_eq!(Ok(Weekday::Thursday), <Weekday as FromStr>::from_str("Giovedì"));
+/// assert_eq!(Ok(Weekday::Friday), <Weekday as FromStr>::from_str("Friday"));
+/// assert_eq!(Ok(Weekday::Saturday), <Weekday as FromStr>::from_str("Saturday"));
+/// assert_eq!(Ok(Weekday::Sunday), <Weekday as FromStr>::from_str("Sunday"));
 /// 
-/// assert_eq!(Ok(Weekday::Monday), FromStr::<Weekday>::from_str("Mon"));
-/// assert_eq!(Ok(Weekday::Tuesday), FromStr::<Weekday>::from_str("tue"));
-/// assert_eq!(Ok(Weekday::Wednesday), FromStr::<Weekday>::from_str("wed"));
-/// assert_eq!(Ok(Weekday::Thursday), FromStr::<Weekday>::from_str("gio"));
-/// assert_eq!(Ok(Weekday::Friday), FromStr::<Weekday>::from_str("Fri"));
-/// assert_eq!(Ok(Weekday::Saturday), FromStr::<Weekday>::from_str("Sat"));
-/// assert_eq!(Ok(Weekday::Sunday), FromStr::<Weekday>::from_str("Sun"));
+/// assert_eq!(Ok(Weekday::Monday), <Weekday as FromStr>::from_str("Mon"));
+/// assert_eq!(Ok(Weekday::Tuesday), <Weekday as FromStr>::from_str("tue"));
+/// assert_eq!(Ok(Weekday::Wednesday), <Weekday as FromStr>::from_str("wed"));
+/// assert_eq!(Ok(Weekday::Thursday), <Weekday as FromStr>::from_str("gio"));
+/// assert_eq!(Ok(Weekday::Friday), <Weekday as FromStr>::from_str("Fri"));
+/// assert_eq!(Ok(Weekday::Saturday), <Weekday as FromStr>::from_str("Sat"));
+/// assert_eq!(Ok(Weekday::Sunday), <Weekday as FromStr>::from_str("Sun"));
 ///
-/// assert_eq!(Err(ParseWeekdayError), FromStr::<Weekday>::from_str("invalid"));
+/// assert_eq!(Err(ParseWeekdayError), <Weekday as FromStr>::from_str("invalid"));
 /// # }
 /// ```
 ///
