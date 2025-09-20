@@ -1,5 +1,5 @@
 use beerec_variants::Variants;
-#[variants(display)]
+#[variants(from_str)]
 pub enum Weekday {
     Monday,
     Tuesday,
@@ -182,8 +182,50 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
         "\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\", \"Sun\""
     }
 }
-impl ::std::fmt::Display for Weekday {
+pub struct ParseWeekdayError;
+#[automatically_derived]
+impl ::core::fmt::Debug for ParseWeekdayError {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::write_str(f, "ParseWeekdayError")
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for ParseWeekdayError {}
+#[automatically_derived]
+impl ::core::cmp::PartialEq for ParseWeekdayError {
+    #[inline]
+    fn eq(&self, other: &ParseWeekdayError) -> bool {
+        true
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for ParseWeekdayError {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {}
+}
+impl ::std::fmt::Display for ParseWeekdayError {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        ::std::fmt::Formatter::write_str(f, self.as_str())
+        ::std::fmt::Formatter::write_str(f, "Expected one of ")?;
+        ::std::fmt::Formatter::write_str(f, Weekday::variants_list_str())?;
+        Ok(())
+    }
+}
+impl ::std::error::Error for ParseWeekdayError {}
+impl ::std::str::FromStr for Weekday {
+    type Err = ParseWeekdayError;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "Monday" | "Mon" => Ok(Self::Monday),
+            "Tuesday" | "Tue" => Ok(Self::Tuesday),
+            "Wednesday" | "Wed" => Ok(Self::Wednesday),
+            "Thursday" | "Thu" => Ok(Self::Thursday),
+            "Friday" | "Fri" => Ok(Self::Friday),
+            "Saturday" | "Sat" => Ok(Self::Saturday),
+            "Sunday" | "Sun" => Ok(Self::Sunday),
+            _ => Err(ParseWeekdayError),
+        }
     }
 }
