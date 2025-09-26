@@ -496,7 +496,7 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 ///
 /// ## Feature-gated attributes
 ///
-/// ### Serde
+/// ### [Serde](https://crates.io/crates/serde)
 ///
 /// The following `enum` outer attributes are exposed when the `serde` feature is
 /// enabled:

@@ -136,7 +136,7 @@ assert_eq!(Err(ParsePriorityError), FromStr::<Priority>::from_str("invalid"));
 
 ## Feature-gated attributes
 
-### Serde
+### [Serde](https://crates.io/crates/serde)
 
 The following `enum` outer attributes are exposed when the `serde` feature is
 enabled:
