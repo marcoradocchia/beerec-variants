@@ -534,33 +534,33 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// // Deserialize from variant string representation.
 /// assert_eq!(
 ///     Ok(Config { theme: Theme::Auto }),
-///     toml::from_str::<'_, Config>("theme = \"Auto\""),
+///     toml::from_str::<'_, Config>("theme = \"Auto\"\n"),
 /// );
 ///
 /// assert_eq!(
 ///     Ok(Config { theme: Theme::Dark }),
-///     toml::from_str::<'_, Config>("theme = \"Dark\""),
+///     toml::from_str::<'_, Config>("theme = \"Dark\"\n"),
 /// );
 ///
 /// assert_eq!(
 ///     Ok(Config { theme: Theme::Light }),
-///     toml::from_str::<'_, Config>("theme = \"Light\""),
+///     toml::from_str::<'_, Config>("theme = \"Light\"\n"),
 /// );
 ///
 /// // Deserialize from variant abbreviated string representation.
 /// assert_eq!(
 ///     Ok(Config { theme: Theme::Auto }),
-///     toml::from_str::<'_, Config>("theme = \"Aut\""),
+///     toml::from_str::<'_, Config>("theme = \"Aut\"\n"),
 /// );
 ///
 /// assert_eq!(
 ///     Ok(Config { theme: Theme::Dark }),
-///     toml::from_str::<'_, Config>("theme = \"Dar\""),
+///     toml::from_str::<'_, Config>("theme = \"Dar\"\n"),
 /// );
 ///
 /// assert_eq!(
 ///     Ok(Config { theme: Theme::Light }),
-///     toml::from_str::<'_, Config>("theme = \"Lig\""),
+///     toml::from_str::<'_, Config>("theme = \"Lig\"\n"),
 /// );
 /// # }
 /// # }
