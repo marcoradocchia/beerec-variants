@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use darling::FromVariant;
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::TokenStream;
 use syn::Ident;
 
 use crate::ident::IdentExt;
@@ -113,7 +113,7 @@ impl TargetVariant {
     pub(crate) fn as_str_match_branch(
         &self,
         outer_rename: Option<OuterRenameStrategy>,
-    ) -> TokenStream2 {
+    ) -> TokenStream {
         let Self { ident, .. } = self;
         let name = self.as_str(outer_rename);
 
@@ -144,9 +144,10 @@ impl TargetVariant {
     /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
     ///    string if the inner rename attribute hasn't been specified.
     fn inner_rename_abbr_uppercase(&self) -> String {
-        self.inner_rename()
-            .map(|name| name.into_owned().to_uppercase_in_place().to_abbr_in_place())
-            .unwrap_or_else(|| self.ident.to_uppercase_string_abbr())
+        self.inner_rename().map_or_else(
+            || self.ident.to_uppercase_string_abbr(),
+            |name| name.into_owned().to_uppercase_in_place().to_abbr_in_place(),
+        )
     }
 
     /// Returns an abbreviated string representation by applying the
@@ -161,9 +162,10 @@ impl TargetVariant {
     /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
     ///    string if the inner rename attribute hasn't been specified.
     fn inner_rename_abbr_lowercase(&self) -> String {
-        self.inner_rename()
-            .map(|name| name.into_owned().to_lowercase_in_place().to_abbr_in_place())
-            .unwrap_or_else(|| self.ident.to_lowercase_string_abbr())
+        self.inner_rename().map_or_else(
+            || self.ident.to_lowercase_string_abbr(),
+            |name| name.into_owned().to_lowercase_in_place().to_abbr_in_place(),
+        )
     }
 
     /// Returns an abbreviated string representation based on the
@@ -207,9 +209,10 @@ impl TargetVariant {
     /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
     ///    string if the inner rename attribute hasn't been specified.
     fn outer_rename_abbr_uppercase(&self) -> String {
-        self.inner_rename()
-            .map(|name| name.into_owned().to_uppercase_in_place().to_abbr_in_place())
-            .unwrap_or_else(|| self.ident.to_uppercase_string_abbr())
+        self.inner_rename().map_or_else(
+            || self.ident.to_uppercase_string_abbr(),
+            |name| name.into_owned().to_uppercase_in_place().to_abbr_in_place(),
+        )
     }
 
     /// Returns an abbreviated string representation applying the
@@ -224,9 +227,10 @@ impl TargetVariant {
     /// 1. **No renaming** (_fallback_) - converts the variant identifier to a
     ///    string if the inner rename attribute hasn't been specified.
     fn outer_rename_abbr_lowercase(&self) -> String {
-        self.inner_rename()
-            .map(|name| name.into_owned().to_lowercase_in_place().to_abbr_in_place())
-            .unwrap_or_else(|| self.ident.to_lowercase_string_abbr())
+        self.inner_rename().map_or_else(
+            || self.ident.to_lowercase_string_abbr(),
+            |name| name.into_owned().to_lowercase_in_place().to_abbr_in_place(),
+        )
     }
 
     /// Returns an abbreviated string representation based on the
@@ -310,7 +314,7 @@ impl TargetVariant {
         &self,
         outer_rename: Option<OuterRenameStrategy>,
         outer_rename_abbr: Option<OuterRenameStrategy>,
-    ) -> TokenStream2 {
+    ) -> TokenStream {
         let Self { ident, .. } = self;
         let name_abbr = self.as_str_abbr(outer_rename, outer_rename_abbr);
 
@@ -337,17 +341,40 @@ impl TargetVariant {
 impl TargetVariant {
     /// Returns a "_match branch_", associating the final string and abbreviated
     /// string representations to the variant, to be used in the generation of
-    /// the `FromStr` trait implementation.
+    /// the [`FromStr`] trait implementation.
+    ///
+    /// [`FromStr`]: ::std::str::FromStr
     #[allow(clippy::wrong_self_convention)]
     pub(crate) fn from_str_match_branch(
         &self,
         outer_rename: Option<OuterRenameStrategy>,
         outer_rename_abbr: Option<OuterRenameStrategy>,
-    ) -> TokenStream2 {
+    ) -> TokenStream {
         let Self { ident, .. } = self;
         let name = self.as_str(outer_rename);
         let name_abbr = self.as_str_abbr(outer_rename, outer_rename_abbr);
 
-        quote::quote! { #name | #name_abbr => Ok(Self::#ident) }
+        quote::quote! { #name | #name_abbr => ::std::result::Result::Ok(Self::#ident) }
+    }
+}
+
+/// Enum variant's `serde` related implementation.
+#[cfg(feature = "serde")]
+impl TargetVariant {
+    /// Returns a "_match branch_", associating the final string and abbreviated
+    /// string representations to the variant, to be used in the generation of
+    /// the `Deserialize` trait implementation.
+    ///
+    /// [`Deserialize`]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
+    pub(crate) fn deserialize_match_branch(
+        &self,
+        outer_rename: Option<OuterRenameStrategy>,
+        outer_rename_abbr: Option<OuterRenameStrategy>,
+    ) -> TokenStream {
+        let Self { ident, .. } = self;
+        let name = self.as_str(outer_rename);
+        let name_abbr = self.as_str_abbr(outer_rename, outer_rename_abbr);
+
+        quote::quote! { #name | #name_abbr => ::std::result::Result::Ok(Self::Value::#ident) }
     }
 }
