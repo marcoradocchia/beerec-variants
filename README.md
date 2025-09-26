@@ -134,6 +134,100 @@ assert_eq!(Ok(Priority::Critical), FromStr::<Priority>::from_str("Cri"));
 assert_eq!(Err(ParsePriorityError), FromStr::<Priority>::from_str("invalid"));
 ```
 
+## Feature-gated attributes
+
+### Serde
+
+The following `enum` outer attributes are exposed when the `serde` feature is
+enabled:
+
+- `deserialize` - generates a [`Deserialize`] trait implementation based on
+  the string or abbreviated string representation provided by the generated
+  `as_str` and `as_str_abbr` respectively;
+- `serialize` - generates a [`Serialize`] trait implementation based on the
+  string representation provided by the generated `as_str` method.
+
+#### Examples
+
+```rust
+#[derive(Debug, Variants, PartialEq, Eq)]
+#[variants(deserialize)]
+enum Theme {
+    Auto,
+    Dark,
+    Light,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[derive(serde::Deserialize)]
+struct Config {
+    theme: Theme,
+}
+
+// Deserialize from variant string representation.
+assert_eq!(
+    Ok(Config { theme: Theme::Auto }),
+    toml::from_str::<'_, Config>("theme = \"Auto\""),
+);
+
+assert_eq!(
+    Ok(Config { theme: Theme::Dark }),
+    toml::from_str::<'_, Config>("theme = \"Dark\""),
+);
+
+assert_eq!(
+    Ok(Config { theme: Theme::Light }),
+    toml::from_str::<'_, Config>("theme = \"Light\""),
+);
+
+// Deserialize from variant abbreviated string representation.
+assert_eq!(
+    Ok(Config { theme: Theme::Auto }),
+    toml::from_str::<'_, Config>("theme = \"Aut\""),
+);
+
+assert_eq!(
+    Ok(Config { theme: Theme::Dark }),
+    toml::from_str::<'_, Config>("theme = \"Dar\""),
+);
+
+assert_eq!(
+    Ok(Config { theme: Theme::Light }),
+    toml::from_str::<'_, Config>("theme = \"Lig\""),
+);
+```
+
+```rust
+#[derive(Debug, Variants, PartialEq, Eq)]
+#[variants(serialize)]
+enum Codec {
+    H264,
+    H265,
+    AV1,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[derive(serde::Serialize)]
+struct Config {
+    codec: Codec,
+}
+
+assert_eq!(
+    Ok(String::from("codec = \"H264\"\n")),
+    toml::to_string(&Config { codec: Codec::H264 }),
+);
+
+assert_eq!(
+    Ok(String::from("codec = \"H265\"\n")),
+    toml::to_string(&Config { codec: Codec::H265 }),
+);
+
+assert_eq!(
+    Ok(String::from("codec = \"AV1\"\n")),
+    toml::to_string(&Config { codec: Codec::AV1 }),
+);
+```
+
 # Variant level attributes
 
 The macro exposes the following variant attributes:
@@ -257,6 +351,7 @@ compilation error.
 
 ```rust
 #[derive(Variants, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", variants(deserialize, serialize))]
 #[variants(display, from_str)]
 enum Weekday {
     #[variants(skip)]
@@ -270,6 +365,12 @@ enum Weekday {
     Friday,
     Saturday,
     Sunday,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+struct Schedule {
+    weekday: Weekday,
 }
 
 // Monday has been marked as `skip`, iterator will yield 6 values.
@@ -362,9 +463,126 @@ assert_eq!(Ok(Weekday::Saturday), FromStr::<Weekday>::from_str("Sat"));
 assert_eq!(Ok(Weekday::Sunday), FromStr::<Weekday>::from_str("Sun"));
 
 assert_eq!(Err(ParseWeekdayError), FromStr::<Weekday>::from_str("invalid"));
+
+// The enum has been marked as `deserialize`, so `serde::Deserialize` implementation is available.
+#[cfg(feature = "serde")]
+{
+    // Deserialize from variant string representation.
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Monday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Monday\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Tuesday }),
+        toml::from_str::<'_, Schedule>("weekday = \"DayAfterMonday\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Wednesday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Wednesday\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Thursday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Giovedì\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Friday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Friday\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Saturday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Saturday\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Sunday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Sunday\"\n"),
+    );
+
+    // Deserialize from variant abbreviated string representation.
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Monday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Mon\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Tuesday }),
+        toml::from_str::<'_, Schedule>("weekday = \"tue\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Wednesday }),
+        toml::from_str::<'_, Schedule>("weekday = \"wed\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Thursday }),
+        toml::from_str::<'_, Schedule>("weekday = \"gio\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Friday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Fri\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Saturday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Sat\"\n"),
+    );
+
+    assert_eq!(
+        Ok(Schedule { weekday: Weekday::Sunday }),
+        toml::from_str::<'_, Schedule>("weekday = \"Sun\"\n"),
+    );
+}
+
+// The enum has been marked as `serialize`, so `serde::Serialize` implementation is available.
+#[cfg(feature = "serde")]  
+{
+    assert_eq!(
+        Ok(String::from("weekday = \"Monday\"\n")),
+        toml::to_string(&Schedule { weekday: Weekday::Monday }),
+    );
+
+    assert_eq!(
+        Ok(String::from("weekday = \"DayAfterMonday\"\n")),
+        toml::to_string(&Schedule { weekday: Weekday::Tuesday }),
+    );
+
+    assert_eq!(
+        Ok(String::from("weekday = \"Wednesday\"\n")),
+        toml::to_string(&Schedule { weekday: Weekday::Wednesday }),
+    );
+
+    assert_eq!(
+        Ok(String::from("weekday = \"Giovedì\"\n")),
+        toml::to_string(&Schedule { weekday: Weekday::Thursday }),
+    );
+
+    assert_eq!(
+        Ok(String::from("weekday = \"Friday\"\n")),
+        toml::to_string(&Schedule { weekday: Weekday::Friday }),
+    );
+
+    assert_eq!(
+        Ok(String::from("weekday = \"Saturday\"\n")),
+        toml::to_string(&Schedule { weekday: Weekday::Saturday }),
+    );
+
+    assert_eq!(
+        Ok(String::from("weekday = \"Sunday\"\n")),
+        toml::to_string(&Schedule { weekday: Weekday::Sunday }),
+    );
+}
 ```
 
 [`Clone`]: https://doc.rust-lang.org/std/clone/trait.Clone.html
 [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
 [`Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
 [`FromStr`]: https://doc.rust-lang.org/std/str/trait.FromStr.html
+[`Deserialize`]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
+[`Serialize`]: https://docs.rs/serde/latest/serde/trait.Serialize.html

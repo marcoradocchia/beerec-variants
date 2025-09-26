@@ -57,11 +57,19 @@ pub(crate) struct TargetEnum {
     /// [`FromStr`]: ::std::str::FromStr
     #[darling(default)]
     from_str: bool,
-    /// TODO
+    /// Wether to generate a [`Deserialize`] trait implementation for the `enum`
+    /// type the macro is being derived on, based on the final string
+    /// representation.
+    ///
+    /// [`Deserialize`]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
     #[darling(default)]
     #[cfg(feature = "serde")]
     deserialize: bool,
-    /// TODO
+    /// Wether to generate a [`Serialize`] trait implementation for the `enum`
+    /// type the macro is being derived on, based on the final string
+    /// representation.
+    ///
+    /// [`Serialize`]: https://docs.rs/serde/latest/serde/trait.Serialize.html
     #[darling(default)]
     #[cfg(feature = "serde")]
     serialize: bool,
@@ -103,14 +111,22 @@ impl TargetEnum {
         self.from_str
     }
 
-    /// TODO
+    /// Wether to generate a [`Deserialize`] trait implementation for the `enum`
+    /// type the macro is being derived on, based on the final string
+    /// representation.
+    ///
+    /// [`Deserialize`]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
     #[inline]
     #[cfg(feature = "serde")]
     pub(crate) fn implement_deserialize(&self) -> bool {
         self.deserialize
     }
 
-    /// TODO
+    /// Wether to generate a [`Serialize`] trait implementation for the `enum`
+    /// type the macro is being derived on, based on the final string
+    /// representation.
+    ///
+    /// [`Serialize`]: https://docs.rs/serde/latest/serde/trait.Serialize.html
     #[inline]
     #[cfg(feature = "serde")]
     pub(crate) fn implement_serialize(&self) -> bool {
@@ -187,14 +203,25 @@ impl TargetEnum {
         .collect()
     }
 
-    /// Returns an iterator over "_match branches_", associating the final string
-    /// and abbreviated string representations to the respective variant of the
-    /// `enum` type the macro is being derived on, to be used on the generation of
-    /// the `FromStr` trait implementation.
+    /// Returns an iterator over "_match branches_", associating the final
+    /// string and abbreviated string representations to the respective
+    /// variant of the `enum` type the macro is being derived on, to be used
+    /// on the generation of the `FromStr` trait implementation.
     ///
     /// [`FromStr`]: ::std::str::From
     #[rustfmt::skip]
     pub(crate) fn variants_from_str_match_branches(&self) -> impl Iterator<Item = TokenStream> {
         self.iter_variants().map(|variant| variant.from_str_match_branch(self.rename, self.rename_abbr))
+    }
+
+    /// Returns an iterator over "_match branches_", associating the final
+    /// string and abbreviated string representations to the respective
+    /// variants of the `enum` type the macro is being derived on, to be
+    /// used on the generation of the `Deserialize` trait implementation.
+    ///
+    /// [`Deserialize`]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
+    #[cfg(feature = "serde")]
+    pub(crate) fn variants_deserialize_match_branches(&self) -> impl Iterator<Item = TokenStream> {
+        self.iter_variants().map(|variant| variant.deserialize_match_branch(self.rename, self.rename_abbr))
     }
 }

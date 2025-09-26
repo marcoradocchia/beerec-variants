@@ -263,6 +263,8 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                     ::std::fmt::Formatter::write_str(f, "Expected one of ")?;
                     ::std::fmt::Formatter::write_str(f, #enum_ident::variants_list_str())?;
+                    ::std::fmt::Formatter::write_str(f, " or one of ")?;
+                    ::std::fmt::Formatter::write_str(f, #enum_ident::variants_list_str_abbr())?;
 
                     Ok(())
                 }
@@ -273,10 +275,10 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
             impl ::std::str::FromStr for #enum_ident {
                 type Err = #parse_error_ident;
 
-                fn from_str(value: &str) -> Result<Self, Self::Err> {
+                fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
                     match value {
                         #(#variants_from_str_match_branches,)*
-                        _ => Err(#parse_error_ident),
+                        _ => ::std::result::Result::Err(#parse_error_ident),
                     }
                 }
             }
@@ -288,10 +290,11 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
     #[cfg(feature = "serde")]
     if target_enum.implement_deserialize() {
         let visitor_ident = Ident::new(&format!("{enum_ident}Visitor"), Span::call_site());
+        let variants_deserialize_match_branches = target_enum.variants_deserialize_match_branches();
 
         let generated_deserialize_impl = quote::quote! {
             impl<'de> ::serde::de::Deserialize<'de> for #enum_ident {
-                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
                 where
                     D: ::serde::de::Deserializer<'de>
                 {
@@ -303,18 +306,24 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
                         fn expecting(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                             ::std::fmt::Formatter::write_str(f, "one of ")?;
                             ::std::fmt::Formatter::write_str(f, #enum_ident::variants_list_str())?;
+                            ::std::fmt::Formatter::write_str(f, " or one of ")?;
+                            ::std::fmt::Formatter::write_str(f, #enum_ident::variants_list_str_abbr())?;
 
                             Ok(())
                         }
 
-                        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+                        fn visit_str<E>(self, value: &str) -> ::std::result::Result<Self::Value, E>
                         where
                             E: ::serde::de::Error,
                         {
-                            <#enum_ident as FromStr>::from_str(value).map_err(|_| {
-                                let unexpected = ::serde::de::Unexpected::Str(value);
-                                ::serde::de::Error::invalid_value(unexpected, &self)
-                            })
+                            match value {
+                                #(#variants_deserialize_match_branches,)*
+                                _ => {
+                                    let unexp = ::serde::de::Unexpected::Str(value);
+                                    let error = ::serde::de::Error::invalid_value(unexp, &self);
+                                    ::std::result::Result::Err(error)
+                                },
+                            }
                         }
                     }
 
@@ -330,9 +339,9 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
     if target_enum.implement_serialize() {
         let generated_serialize_impl = quote::quote! {
             impl ::serde::ser::Serialize for #enum_ident {
-                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
                 where
-                    S: ::serde::ser::Serialize,
+                    S: ::serde::ser::Serializer,
                 {
                     serializer.serialize_str(self.as_str())
                 }
@@ -485,6 +494,118 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// # }
 /// ```
 ///
+/// ## Feature-gated attributes
+///
+/// ### Serde
+///
+/// The following `enum` outer attributes are exposed when the `serde` feature is
+/// enabled:
+/// 
+/// - `deserialize` - generates a [`Deserialize`] trait implementation based on
+///   the string or abbreviated string representation provided by the generated
+///   `as_str` and `as_str_abbr` respectively;
+/// - `serialize` - generates a [`Serialize`] trait implementation based on the
+///   string representation provided by the generated `as_str` method.
+/// 
+/// #### Examples
+///
+/// ```rust
+/// # use beerec_variants::Variants;
+/// #
+/// #[derive(Debug, Variants, PartialEq, Eq)]
+/// # #[cfg(feature = "serde")]
+/// #[variants(deserialize)]
+/// enum Theme {
+///     Auto,
+///     Dark,
+///     Light,
+/// }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// # #[cfg(feature = "serde")]
+/// #[derive(serde::Deserialize)]
+/// struct Config {
+///     theme: Theme,
+/// }
+///
+/// # fn main() {
+/// # #[cfg(feature = "serde")]
+/// # {
+/// // Deserialize from variant string representation.
+/// assert_eq!(
+///     Ok(Config { theme: Theme::Auto }),
+///     toml::from_str::<'_, Config>("theme = \"Auto\""),
+/// );
+///
+/// assert_eq!(
+///     Ok(Config { theme: Theme::Dark }),
+///     toml::from_str::<'_, Config>("theme = \"Dark\""),
+/// );
+///
+/// assert_eq!(
+///     Ok(Config { theme: Theme::Light }),
+///     toml::from_str::<'_, Config>("theme = \"Light\""),
+/// );
+///
+/// // Deserialize from variant abbreviated string representation.
+/// assert_eq!(
+///     Ok(Config { theme: Theme::Auto }),
+///     toml::from_str::<'_, Config>("theme = \"Aut\""),
+/// );
+///
+/// assert_eq!(
+///     Ok(Config { theme: Theme::Dark }),
+///     toml::from_str::<'_, Config>("theme = \"Dar\""),
+/// );
+///
+/// assert_eq!(
+///     Ok(Config { theme: Theme::Light }),
+///     toml::from_str::<'_, Config>("theme = \"Lig\""),
+/// );
+/// # }
+/// # }
+/// ```
+///
+/// ```rust
+/// # use beerec_variants::Variants;
+/// #
+/// #[derive(Debug, Variants, PartialEq, Eq)]
+/// # #[cfg(feature = "serde")]
+/// #[variants(serialize)]
+/// enum Codec {
+///     H264,
+///     H265,
+///     AV1,
+/// }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// # #[cfg(feature = "serde")]
+/// #[derive(serde::Serialize)]
+/// struct Config {
+///     codec: Codec,
+/// }
+///
+/// # fn main() {
+/// # #[cfg(feature = "serde")]
+/// # {
+/// assert_eq!(
+///     Ok(String::from("codec = \"H264\"\n")),
+///     toml::to_string(&Config { codec: Codec::H264 }),
+/// );
+///
+/// assert_eq!(
+///     Ok(String::from("codec = \"H265\"\n")),
+///     toml::to_string(&Config { codec: Codec::H265 }),
+/// );
+///
+/// assert_eq!(
+///     Ok(String::from("codec = \"AV1\"\n")),
+///     toml::to_string(&Config { codec: Codec::AV1 }),
+/// );
+/// # }
+/// # }
+/// ```
+///
 /// # Variant level attributes
 ///
 /// The macro exposes the following variant attributes:
@@ -616,6 +737,7 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// # use beerec_variants::Variants;
 /// #
 /// #[derive(Variants, Debug, PartialEq, Eq)]
+/// #[cfg_attr(feature = "serde", variants(deserialize, serialize))]
 /// #[variants(display, from_str)]
 /// enum Weekday {
 ///     #[variants(skip)]
@@ -629,6 +751,12 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 ///     Friday,
 ///     Saturday,
 ///     Sunday,
+/// }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+/// struct Schedule {
+///     weekday: Weekday,
 /// }
 ///
 /// # fn main() {
@@ -723,12 +851,131 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
 /// assert_eq!(Ok(Weekday::Sunday), <Weekday as FromStr>::from_str("Sun"));
 ///
 /// assert_eq!(Err(ParseWeekdayError), <Weekday as FromStr>::from_str("invalid"));
+///
+/// // The enum has been marked as `deserialize`, so `serde::Deserialize` implementation is available.
+/// #[cfg(feature = "serde")]
+/// {
+///     // Deserialize from variant string representation.
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Monday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Monday\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Tuesday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"DayAfterMonday\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Wednesday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Wednesday\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Thursday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Giovedì\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Friday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Friday\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Saturday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Saturday\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Sunday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Sunday\"\n"),
+///     );
+///
+///     // Deserialize from variant abbreviated string representation.
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Monday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Mon\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Tuesday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"tue\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Wednesday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"wed\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Thursday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"gio\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Friday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Fri\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Saturday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Sat\"\n"),
+///     );
+///
+///     assert_eq!(
+///         Ok(Schedule { weekday: Weekday::Sunday }),
+///         toml::from_str::<'_, Schedule>("weekday = \"Sun\"\n"),
+///     );
+/// }
+/// 
+/// // The enum has been marked as `serialize`, so `serde::Serialize` implementation is available.
+/// #[cfg(feature = "serde")]
+/// {
+///     assert_eq!(
+///         Ok(String::from("weekday = \"Monday\"\n")),
+///         toml::to_string(&Schedule { weekday: Weekday::Monday }),
+///     );
+///
+///     assert_eq!(
+///         Ok(String::from("weekday = \"DayAfterMonday\"\n")),
+///         toml::to_string(&Schedule { weekday: Weekday::Tuesday }),
+///     );
+///
+///     assert_eq!(
+///         Ok(String::from("weekday = \"Wednesday\"\n")),
+///         toml::to_string(&Schedule { weekday: Weekday::Wednesday }),
+///     );
+///
+///     assert_eq!(
+///         Ok(String::from("weekday = \"Giovedì\"\n")),
+///         toml::to_string(&Schedule { weekday: Weekday::Thursday }),
+///     );
+///
+///     assert_eq!(
+///         Ok(String::from("weekday = \"Friday\"\n")),
+///         toml::to_string(&Schedule { weekday: Weekday::Friday }),
+///     );
+///
+///     assert_eq!(
+///         Ok(String::from("weekday = \"Saturday\"\n")),
+///         toml::to_string(&Schedule { weekday: Weekday::Saturday }),
+///     );
+///
+///     assert_eq!(
+///         Ok(String::from("weekday = \"Sunday\"\n")),
+///         toml::to_string(&Schedule { weekday: Weekday::Sunday }),
+///     );
+/// }
 /// # }
+/// 
 /// ```
 ///
 /// [`Clone`]: https://doc.rust-lang.org/std/clone/trait.Clone.html
 /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
 /// [`Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
+/// [`FromStr`]: https://doc.rust-lang.org/std/str/trait.FromStr.html
+/// [`Deserialize`]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
+/// [`Serialize`]: https://docs.rs/serde/latest/serde/trait.Serialize.html
 #[proc_macro_derive(Variants, attributes(variants))]
 pub fn derive_enum_variants(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as DeriveInput);
@@ -743,6 +990,11 @@ mod test {
     #[test]
     fn expand() {
         macrotest::expand("tests/expand/*.rs");
+    }
+
+    #[test]
+    fn expand_serde() {
+        macrotest::expand_args("tests/expand/serde/*.rs", &["--features", "serde"]);
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use beerec_variants::Variants;
-#[variants(from_str)]
+#[variants(deserialize)]
 pub enum Weekday {
     Monday,
     Tuesday,
@@ -182,52 +182,47 @@ enum variants marked with the `#[variants(skip)]` attribute are excluded from th
         "\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\", \"Sun\""
     }
 }
-pub struct ParseWeekdayError;
-#[automatically_derived]
-impl ::core::fmt::Debug for ParseWeekdayError {
-    #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::write_str(f, "ParseWeekdayError")
-    }
-}
-#[automatically_derived]
-impl ::core::marker::StructuralPartialEq for ParseWeekdayError {}
-#[automatically_derived]
-impl ::core::cmp::PartialEq for ParseWeekdayError {
-    #[inline]
-    fn eq(&self, other: &ParseWeekdayError) -> bool {
-        true
-    }
-}
-#[automatically_derived]
-impl ::core::cmp::Eq for ParseWeekdayError {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {}
-}
-impl ::std::fmt::Display for ParseWeekdayError {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        ::std::fmt::Formatter::write_str(f, "Expected one of ")?;
-        ::std::fmt::Formatter::write_str(f, Weekday::variants_list_str())?;
-        ::std::fmt::Formatter::write_str(f, " or one of ")?;
-        ::std::fmt::Formatter::write_str(f, Weekday::variants_list_str_abbr())?;
-        Ok(())
-    }
-}
-impl ::std::error::Error for ParseWeekdayError {}
-impl ::std::str::FromStr for Weekday {
-    type Err = ParseWeekdayError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, Self::Err> {
-        match value {
-            "Monday" | "Mon" => ::std::result::Result::Ok(Self::Monday),
-            "Tuesday" | "Tue" => ::std::result::Result::Ok(Self::Tuesday),
-            "Wednesday" | "Wed" => ::std::result::Result::Ok(Self::Wednesday),
-            "Thursday" | "Thu" => ::std::result::Result::Ok(Self::Thursday),
-            "Friday" | "Fri" => ::std::result::Result::Ok(Self::Friday),
-            "Saturday" | "Sat" => ::std::result::Result::Ok(Self::Saturday),
-            "Sunday" | "Sun" => ::std::result::Result::Ok(Self::Sunday),
-            _ => ::std::result::Result::Err(ParseWeekdayError),
+impl<'de> ::serde::de::Deserialize<'de> for Weekday {
+    fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+    where
+        D: ::serde::de::Deserializer<'de>,
+    {
+        struct WeekdayVisitor;
+        impl<'de> ::serde::de::Visitor<'de> for WeekdayVisitor {
+            type Value = Weekday;
+            fn expecting(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                ::std::fmt::Formatter::write_str(f, "one of ")?;
+                ::std::fmt::Formatter::write_str(f, Weekday::variants_list_str())?;
+                ::std::fmt::Formatter::write_str(f, " or one of ")?;
+                ::std::fmt::Formatter::write_str(f, Weekday::variants_list_str_abbr())?;
+                Ok(())
+            }
+            fn visit_str<E>(self, value: &str) -> ::std::result::Result<Self::Value, E>
+            where
+                E: ::serde::de::Error,
+            {
+                match value {
+                    "Monday" | "Mon" => ::std::result::Result::Ok(Self::Value::Monday),
+                    "Tuesday" | "Tue" => ::std::result::Result::Ok(Self::Value::Tuesday),
+                    "Wednesday" | "Wed" => {
+                        ::std::result::Result::Ok(Self::Value::Wednesday)
+                    }
+                    "Thursday" | "Thu" => {
+                        ::std::result::Result::Ok(Self::Value::Thursday)
+                    }
+                    "Friday" | "Fri" => ::std::result::Result::Ok(Self::Value::Friday),
+                    "Saturday" | "Sat" => {
+                        ::std::result::Result::Ok(Self::Value::Saturday)
+                    }
+                    "Sunday" | "Sun" => ::std::result::Result::Ok(Self::Value::Sunday),
+                    _ => {
+                        let unexp = ::serde::de::Unexpected::Str(value);
+                        let error = ::serde::de::Error::invalid_value(unexp, &self);
+                        ::std::result::Result::Err(error)
+                    }
+                }
+            }
         }
+        deserializer.deserialize_str(WeekdayVisitor)
     }
 }
