@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.0] - 2025-09-26
+
+### Added
+
+- Introduce `serde` feature and implement `deserialize` and `serialize` type level attributes ([`59a667d`](https://github.com/marcoradocchia/beerec-variants/commit/59a667d)) ([Marco Radocchia])
+
 ## [0.4.0] - 2025-09-19
 
 ### Added
@@ -37,5 +43,6 @@ _Initial release._
 [0.3.0]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.3.0
 [0.3.1]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.3.1
 [0.4.0]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.4.0
+[0.5.0]: https://github.com/marcoradocchia/beerec-variants/releases/tag/v0.5.0
 
 [Marco Radocchia]: https://github.com/marcoradocchia
